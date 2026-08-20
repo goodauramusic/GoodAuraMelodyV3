@@ -2,102 +2,71 @@
 
 #include <algorithm>
 #include <cmath>
-
-// =====================================================
-// CONSTRUCTOR
-// =====================================================
+#include <numeric>
 
 MelodyEngine::MelodyEngine()
     : rng(std::random_device{}())
 {
 }
 
-// =====================================================
-// NOTE NAMES
-// =====================================================
-
 juce::StringArray MelodyEngine::rootNames()
 {
     return
     {
-        "C",
-        "C#",
-        "D",
-        "Eb",
-        "E",
-        "F",
-        "F#",
-        "G",
-        "Ab",
-        "A",
-        "Bb",
-        "B"
+        "C","C#","D","Eb","E","F",
+        "F#","G","Ab","A","Bb","B"
     };
 }
-
-// =====================================================
-// CHORD TYPES
-// =====================================================
 
 juce::StringArray MelodyEngine::chordNames()
 {
     return
     {
-        "Major",
-        "Minor",
-        "Maj7",
-        "Min7",
-        "7",
-        "Dim",
-        "Sus2",
-        "Sus4",
-        "6",
-        "m6",
-        "9",
-        "Maj9",
-        "m9",
-        "11",
-        "m11",
-        "13",
-        "m13",
-        "add9",
-        "madd9",
-        "7sus4"
+        "Major","Minor","Maj7","Min7","7",
+        "Dim","Sus2","Sus4","6","m6",
+        "9","Maj9","m9","11","m11",
+        "13","m13","add9","madd9","7sus4"
     };
 }
 
-// =====================================================
-// CHORD INTERVALS
-// =====================================================
+juce::StringArray MelodyEngine::melodyStyleNames()
+{
+    return
+    {
+        "Smooth",
+        "Catchy",
+        "Emotional",
+        "Dark",
+        "Bouncy",
+        "Complex"
+    };
+}
 
 std::vector<int>
-MelodyEngine::chordIntervals(
-    int chordType)
+MelodyEngine::chordIntervals(int chordType)
 {
-    static const std::vector<
-        std::vector<int>>
-        table =
+    static const std::vector<std::vector<int>> table =
     {
-        {0, 4, 7},                 // Major
-        {0, 3, 7},                 // Minor
-        {0, 4, 7, 11},             // Maj7
-        {0, 3, 7, 10},             // Min7
-        {0, 4, 7, 10},             // Dominant 7
-        {0, 3, 6},                 // Diminished
-        {0, 2, 7},                 // Sus2
-        {0, 5, 7},                 // Sus4
-        {0, 4, 7, 9},              // 6
-        {0, 3, 7, 9},              // m6
-        {0, 4, 7, 10, 14},         // 9
-        {0, 4, 7, 11, 14},         // Maj9
-        {0, 3, 7, 10, 14},         // m9
-        {0, 4, 7, 10, 14, 17},     // 11
-        {0, 3, 7, 10, 14, 17},     // m11
-        {0, 4, 7, 10, 14, 17, 21}, // 13
-        {0, 3, 7, 10, 14, 17, 21}, // m13
-        {0, 4, 7, 14},             // add9
-        {0, 3, 7, 14},             // madd9
-        {0, 5, 7, 10}              // 7sus4
+        {0,4,7},
+        {0,3,7},
+        {0,4,7,11},
+        {0,3,7,10},
+        {0,4,7,10},
+        {0,3,6},
+        {0,2,7},
+        {0,5,7},
+        {0,4,7,9},
+        {0,3,7,9},
+        {0,4,7,10,14},
+        {0,4,7,11,14},
+        {0,3,7,10,14},
+        {0,4,7,10,14,17},
+        {0,3,7,10,14,17},
+        {0,4,7,10,14,17,21},
+        {0,3,7,10,14,17,21},
+        {0,4,7,14},
+        {0,3,7,14},
+        {0,5,7,10}
     };
 
     return table[
@@ -107,27 +76,33 @@ MelodyEngine::chordIntervals(
             chordType)];
 }
 
-// =====================================================
-// RANDOM HELPERS
-// =====================================================
-
 int MelodyEngine::randomInt(
     int low,
     int high)
 {
-    std::uniform_int_distribution<int>
-        distribution(
-            low,
-            high);
+    std::uniform_int_distribution<int> d(
+        low,
+        high);
 
-    return distribution(rng);
+    return d(rng);
+}
+
+double MelodyEngine::randomDouble(
+    double low,
+    double high)
+{
+    std::uniform_real_distribution<double> d(
+        low,
+        high);
+
+    return d(rng);
 }
 
 bool MelodyEngine::chance(
     int percent)
 {
     return
-        randomInt(0, 99)
+        randomInt(0,99)
         <
         juce::jlimit(
             0,
@@ -135,12 +110,8 @@ bool MelodyEngine::chance(
             percent);
 }
 
-// =====================================================
-// CREATE NOTE POOL FROM CURRENT CHORD
-// =====================================================
-
 std::vector<int>
-MelodyEngine::makePool(
+MelodyEngine::makeChordTonePool(
     const ChordChoice& chord,
     int low,
     int high) const
@@ -151,71 +122,21 @@ MelodyEngine::makePool(
         chordIntervals(
             chord.type);
 
-    // -----------------------------------------------
-    // CHORD TONES
-    //
-    // These receive extra weighting so the melody
-    // strongly follows each generated chord.
-    // -----------------------------------------------
-
-    for (int midi = low;
-         midi <= high;
-         ++midi)
+    for (int note = low;
+         note <= high;
+         ++note)
     {
         const int pitchClass =
-            (midi
-             - chord.root
-             + 120)
+            (note - chord.root + 120)
             % 12;
 
-        for (int interval :
-             intervals)
+        for (int interval : intervals)
         {
             if ((interval % 12)
                 == pitchClass)
             {
-                // Add multiple times to increase
-                // probability of chord tones.
-                pool.push_back(midi);
-                pool.push_back(midi);
-                pool.push_back(midi);
-
+                pool.push_back(note);
                 break;
-            }
-        }
-    }
-
-    // -----------------------------------------------
-    // COLOUR NOTES
-    //
-    // These give the melodies more R&B / Neo Soul /
-    // modern melodic movement.
-    // -----------------------------------------------
-
-    static const int colourIntervals[] =
-    {
-        2,   // 9th
-        5,   // 11th
-        9,   // 13th / 6th
-        11   // major 7 colour
-    };
-
-    for (int midi = low;
-         midi <= high;
-         ++midi)
-    {
-        const int pitchClass =
-            (midi
-             - chord.root
-             + 120)
-            % 12;
-
-        for (int colour :
-             colourIntervals)
-        {
-            if (pitchClass == colour)
-            {
-                pool.push_back(midi);
             }
         }
     }
@@ -223,101 +144,1103 @@ MelodyEngine::makePool(
     return pool;
 }
 
-// =====================================================
-// CHOOSE NOTE NEAR PREVIOUS NOTE
-// =====================================================
+std::vector<int>
+MelodyEngine::makeMelodicPool(
+    const ChordChoice& chord,
+    int low,
+    int high) const
+{
+    auto pool =
+        makeChordTonePool(
+            chord,
+            low,
+            high);
 
-int MelodyEngine::nearestPitchFromPool(
+    // Useful extension / passing colours.
+    static const int colours[] =
+    {
+        2,
+        5,
+        9,
+        10,
+        11
+    };
+
+    for (int note = low;
+         note <= high;
+         ++note)
+    {
+        const int pc =
+            (note - chord.root + 120)
+            % 12;
+
+        for (int colour : colours)
+        {
+            if (pc == colour)
+            {
+                pool.push_back(note);
+                break;
+            }
+        }
+    }
+
+    std::sort(
+        pool.begin(),
+        pool.end());
+
+    pool.erase(
+        std::unique(
+            pool.begin(),
+            pool.end()),
+        pool.end());
+
+    return pool;
+}
+
+int MelodyEngine::nearestPitch(
     int previous,
     const std::vector<int>& pool,
-    bool favorStep)
+    int maximumJump)
 {
     if (pool.empty())
         return previous;
 
-    if (!favorStep)
+    std::vector<int> candidates;
+
+    for (int note : pool)
     {
-        return pool[
-            (size_t)randomInt(
-                0,
-                (int)pool.size() - 1)];
-    }
-
-    std::vector<
-        std::pair<int, int>>
-        scored;
-
-    scored.reserve(
-        pool.size());
-
-    for (int note :
-         pool)
-    {
-        scored.push_back(
+        if (std::abs(
+                note - previous)
+            <= maximumJump)
         {
-            std::abs(
-                note - previous),
-
-            note
-        });
+            candidates.push_back(note);
+        }
     }
+
+    if (candidates.empty())
+        candidates = pool;
 
     std::sort(
-        scored.begin(),
-        scored.end(),
-
-        [](
-            const auto& a,
-            const auto& b)
+        candidates.begin(),
+        candidates.end(),
+        [previous](
+            int a,
+            int b)
         {
             return
-                a.first
+                std::abs(a - previous)
                 <
-                b.first;
+                std::abs(b - previous);
         });
 
-    const int numberOfChoices =
+    const int limit =
         juce::jmin(
-            6,
-            (int)scored.size());
+            5,
+            (int)candidates.size());
 
-    return scored[
+    return candidates[
         (size_t)randomInt(
             0,
-            numberOfChoices - 1)]
-        .second;
+            limit - 1)];
 }
 
-// =====================================================
-// GENERATE COMPLETE MUSICAL PHRASE
-//
-// MIDI CHANNEL 1 = CHORDS
-// MIDI CHANNEL 2 = MAIN MELODY
-// MIDI CHANNEL 3 = COUNTER MELODY
-// =====================================================
+std::vector<double>
+MelodyEngine::makeRhythmPattern(
+    const Settings& settings,
+    int barIndex)
+{
+    std::vector<double> rhythm;
 
-std::vector<
-    MelodyEngine::NoteEvent>
+    const auto style =
+        settings.style.toLowerCase();
+
+    // Each value is a beat offset
+    // inside one 4/4 bar.
+
+    if (style == "catchy")
+    {
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0, 1.0, 2.0, 3.0},
+            {0.0, 0.5, 1.5, 2.5},
+            {0.5, 1.0, 2.0, 3.0},
+            {0.0, 1.5, 2.0, 3.5}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+    else if (style == "bouncy")
+    {
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0,0.5,1.5,2.0,3.0},
+            {0.5,1.0,1.75,2.5,3.5},
+            {0.0,0.75,1.5,2.25,3.25},
+            {0.5,1.5,2.0,2.75,3.5}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+    else if (style == "complex")
+    {
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0,0.5,1.0,1.5,2.25,3.0,3.5},
+            {0.25,0.75,1.25,2.0,2.5,3.0,3.75},
+            {0.0,0.75,1.5,2.0,2.75,3.25},
+            {0.5,1.0,1.5,2.25,2.75,3.5}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+    else if (style == "emotional")
+    {
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0,1.0,2.5},
+            {0.5,1.5,3.0},
+            {0.0,1.5,2.0,3.5},
+            {0.0,2.0,3.0}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+    else if (style == "dark")
+    {
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0,1.5,3.0},
+            {0.5,2.0,3.5},
+            {0.0,2.5},
+            {1.0,2.0,3.0}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+    else
+    {
+        // Smooth
+        static const std::vector<
+            std::vector<double>>
+        patterns =
+        {
+            {0.0,1.0,2.0,3.0},
+            {0.5,1.5,2.5,3.5},
+            {0.0,1.5,2.5},
+            {0.5,1.0,2.0,3.0}
+        };
+
+        rhythm =
+            patterns[
+                (size_t)randomInt(
+                    0,
+                    (int)patterns.size()-1)];
+    }
+
+    // Density trims some rhythm positions.
+    std::vector<double> filtered;
+
+    for (double beat : rhythm)
+    {
+        if (chance(
+            juce::jlimit(
+                20,
+                100,
+                settings.melodyDensity)))
+        {
+            filtered.push_back(beat);
+        }
+    }
+
+    // Keep at least one note in most bars.
+    if (filtered.empty()
+        && chance(80))
+    {
+        filtered.push_back(
+            rhythm.empty()
+                ? 0.0
+                : rhythm.front());
+    }
+
+    // Phrase endings get more space.
+    if (barIndex == 3
+        && filtered.size() > 2
+        && chance(60))
+    {
+        filtered.pop_back();
+    }
+
+    return filtered;
+}
+
+std::vector<int>
+MelodyEngine::createMotif(
+    const Settings& settings,
+    const ChordChoice& chord,
+    int startingNote)
+{
+    std::vector<int> motif;
+
+    const auto pool =
+        makeMelodicPool(
+            chord,
+            60,
+            88);
+
+    int current =
+        nearestPitch(
+            startingNote,
+            pool,
+            7);
+
+    int motifLength = 3;
+
+    if (settings.complexity >= 70)
+        motifLength = 5;
+    else if (settings.complexity >= 45)
+        motifLength = 4;
+
+    motif.push_back(current);
+
+    for (int i = 1;
+         i < motifLength;
+         ++i)
+    {
+        int maxJump = 5;
+
+        if (settings.movement > 70)
+            maxJump = 12;
+        else if (settings.movement < 35)
+            maxJump = 3;
+
+        current =
+            nearestPitch(
+                current,
+                pool,
+                maxJump);
+
+        motif.push_back(current);
+    }
+
+    return motif;
+}
+
+std::vector<int>
+MelodyEngine::mutateMotif(
+    const std::vector<int>& motif,
+    const Settings& settings,
+    const ChordChoice& chord)
+{
+    if (motif.empty())
+        return {};
+
+    auto result =
+        motif;
+
+    const auto pool =
+        makeMelodicPool(
+            chord,
+            60,
+            90);
+
+    for (size_t i = 0;
+         i < result.size();
+         ++i)
+    {
+        // Repetition control:
+        // high repetition = fewer changes.
+        const int mutationChance =
+            100
+            -
+            juce::jlimit(
+                10,
+                90,
+                settings.repetition);
+
+        if (chance(mutationChance))
+        {
+            result[i] =
+                nearestPitch(
+                    result[i],
+                    pool,
+                    settings.movement > 60
+                        ? 9
+                        : 5);
+        }
+    }
+
+    // Occasionally alter just the ending.
+    if (result.size() >= 2
+        && chance(35))
+    {
+        result.back() =
+            nearestPitch(
+                result[
+                    result.size()-2],
+                pool,
+                7);
+    }
+
+    return result;
+}
+
+std::vector<MelodyEngine::NoteEvent>
+MelodyEngine::generateLeadCandidate(
+    const Settings& settings,
+    const std::array<
+        ChordChoice,
+        4>& progression)
+{
+    std::vector<NoteEvent> lead;
+
+    int previousNote = 72;
+
+    std::vector<int> motifA;
+
+    for (int bar = 0;
+         bar < settings.bars;
+         ++bar)
+    {
+        const auto chord =
+            progression[
+                (size_t)(bar % 4)];
+
+        const auto rhythm =
+            makeRhythmPattern(
+                settings,
+                bar);
+
+        std::vector<int> motif;
+
+        if (bar == 0)
+        {
+            motif =
+                createMotif(
+                    settings,
+                    chord,
+                    previousNote);
+
+            motifA = motif;
+        }
+        else if (bar == 1)
+        {
+            motif =
+                mutateMotif(
+                    motifA,
+                    settings,
+                    chord);
+        }
+        else if (bar == 2)
+        {
+            if (chance(
+                settings.repetition))
+            {
+                motif =
+                    mutateMotif(
+                        motifA,
+                        settings,
+                        chord);
+            }
+            else
+            {
+                motif =
+                    createMotif(
+                        settings,
+                        chord,
+                        previousNote);
+            }
+        }
+        else
+        {
+            // Final bar tends to resolve.
+            motif =
+                mutateMotif(
+                    motifA,
+                    settings,
+                    chord);
+        }
+
+        if (motif.empty())
+            continue;
+
+        const auto chordTones =
+            makeChordTonePool(
+                chord,
+                60,
+                90);
+
+        for (size_t i = 0;
+             i < rhythm.size();
+             ++i)
+        {
+            int note =
+                motif[
+                    i % motif.size()];
+
+            // Strong beats prefer chord tones.
+            const double localBeat =
+                rhythm[i];
+
+            const bool strongBeat =
+                std::abs(
+                    localBeat
+                    - std::round(localBeat))
+                < 0.01;
+
+            if (strongBeat
+                && !chordTones.empty()
+                && chance(70))
+            {
+                note =
+                    nearestPitch(
+                        note,
+                        chordTones,
+                        5);
+            }
+
+            // Final phrase note resolves strongly.
+            if (bar == 3
+                && i == rhythm.size()-1
+                && !chordTones.empty())
+            {
+                note =
+                    nearestPitch(
+                        note,
+                        chordTones,
+                        4);
+            }
+
+            // Style-specific octave behavior.
+            if (settings.style.equalsIgnoreCase(
+                    "Emotional")
+                && chance(12))
+            {
+                note += 12;
+            }
+
+            if (settings.style.equalsIgnoreCase(
+                    "Dark")
+                && chance(20))
+            {
+                note -= 12;
+            }
+
+            note =
+                juce::jlimit(
+                    58,
+                    92,
+                    note);
+
+            const double globalBeat =
+                bar * 4.0
+                + rhythm[i];
+
+            double length =
+                0.42;
+
+            if (settings.style.equalsIgnoreCase(
+                    "Smooth")
+                ||
+                settings.style.equalsIgnoreCase(
+                    "Emotional"))
+            {
+                length =
+                    chance(40)
+                        ? 0.9
+                        : 0.48;
+            }
+            else if (settings.style.equalsIgnoreCase(
+                    "Bouncy"))
+            {
+                length =
+                    chance(70)
+                        ? 0.28
+                        : 0.48;
+            }
+
+            int velocity =
+                randomInt(
+                    78,
+                    108);
+
+            double startBeat =
+                globalBeat;
+
+            if (settings.humanise > 0)
+            {
+                startBeat +=
+                    randomDouble(
+                        -0.02,
+                        0.02)
+                    *
+                    (settings.humanise
+                     / 25.0);
+
+                velocity +=
+                    randomInt(
+                        -settings.humanise / 3,
+                        settings.humanise / 3);
+            }
+
+            lead.push_back(
+            {
+                juce::jmax(
+                    bar * 4.0,
+                    startBeat),
+
+                length,
+
+                note,
+
+                juce::jlimit(
+                    1,
+                    127,
+                    velocity),
+
+                2
+            });
+
+            previousNote =
+                note;
+        }
+    }
+
+    return lead;
+}
+
+bool MelodyEngine::leadIsActiveNear(
+    const std::vector<NoteEvent>& lead,
+    double beat,
+    double tolerance) const
+{
+    for (const auto& event : lead)
+    {
+        const double start =
+            event.beat;
+
+        const double end =
+            event.beat
+            + event.lengthBeats;
+
+        if (beat >= start - tolerance
+            &&
+            beat <= end + tolerance)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int MelodyEngine::currentChordIndex(
+    double beat) const
+{
+    return
+        juce::jlimit(
+            0,
+            3,
+            (int)std::floor(
+                beat / 4.0));
+}
+
+std::vector<MelodyEngine::NoteEvent>
+MelodyEngine::generateCounterCandidate(
+    const Settings& settings,
+    const std::array<
+        ChordChoice,
+        4>& progression,
+    const std::vector<NoteEvent>& lead)
+{
+    std::vector<NoteEvent> counter;
+
+    int previousNote = 55;
+
+    for (int bar = 0;
+         bar < settings.bars;
+         ++bar)
+    {
+        const auto chord =
+            progression[
+                (size_t)(bar % 4)];
+
+        const auto pool =
+            makeMelodicPool(
+                chord,
+                43,
+                72);
+
+        // Counter melody probes offbeats
+        // and spaces between lead phrases.
+        static const double positions[] =
+        {
+            0.5,
+            1.5,
+            2.5,
+            3.5
+        };
+
+        for (double localBeat :
+             positions)
+        {
+            if (!chance(
+                settings.counterDensity))
+            {
+                continue;
+            }
+
+            const double beat =
+                bar * 4.0
+                + localBeat;
+
+            // Prefer spaces where lead is not active.
+            if (leadIsActiveNear(
+                    lead,
+                    beat,
+                    0.18))
+            {
+                if (chance(80))
+                    continue;
+            }
+
+            int maxJump =
+                settings.movement > 60
+                ? 8
+                : 5;
+
+            int note =
+                nearestPitch(
+                    previousNote,
+                    pool,
+                    maxJump);
+
+            // Find nearby lead note for contrary motion.
+            int nearbyLead =
+                72;
+
+            double bestDistance =
+                999.0;
+
+            for (const auto& leadEvent :
+                 lead)
+            {
+                const double distance =
+                    std::abs(
+                        leadEvent.beat
+                        - beat);
+
+                if (distance <
+                    bestDistance)
+                {
+                    bestDistance =
+                        distance;
+
+                    nearbyLead =
+                        leadEvent.note;
+                }
+            }
+
+            if (nearbyLead > 74)
+            {
+                note =
+                    juce::jmin(
+                        note,
+                        62);
+            }
+            else if (nearbyLead < 66)
+            {
+                note =
+                    juce::jmax(
+                        note,
+                        50);
+            }
+
+            // Avoid exact unisons with lead.
+            for (const auto& leadEvent :
+                 lead)
+            {
+                if (std::abs(
+                        leadEvent.beat
+                        - beat)
+                    < 0.15
+                    &&
+                    leadEvent.note
+                    == note)
+                {
+                    note +=
+                        chance(50)
+                        ? 3
+                        : -3;
+                }
+            }
+
+            note =
+                juce::jlimit(
+                    43,
+                    72,
+                    note);
+
+            double length =
+                settings.style.equalsIgnoreCase(
+                    "Smooth")
+                ? 0.75
+                : 0.45;
+
+            int velocity =
+                randomInt(
+                    48,
+                    76);
+
+            counter.push_back(
+            {
+                beat,
+                length,
+                note,
+                velocity,
+                3
+            });
+
+            previousNote =
+                note;
+        }
+    }
+
+    return counter;
+}
+
+double MelodyEngine::scoreLead(
+    const std::vector<NoteEvent>& lead,
+    const std::array<
+        ChordChoice,
+        4>& progression,
+    const Settings& settings) const
+{
+    if (lead.empty())
+        return -1000.0;
+
+    double score =
+        0.0;
+
+    // Reward sensible total density.
+    const double idealNotes =
+        10.0
+        +
+        settings.melodyDensity
+        * 0.12;
+
+    score -=
+        std::abs(
+            (double)lead.size()
+            - idealNotes)
+        * 1.5;
+
+    int largeJumps = 0;
+    int repeatedNotes = 0;
+    int chordToneHits = 0;
+
+    for (size_t i = 0;
+         i < lead.size();
+         ++i)
+    {
+        const auto& event =
+            lead[i];
+
+        const int chordIndex =
+            juce::jlimit(
+                0,
+                3,
+                (int)(event.beat / 4.0));
+
+        const auto intervals =
+            chordIntervals(
+                progression[
+                    (size_t)chordIndex]
+                    .type);
+
+        const int pc =
+            (event.note
+             -
+             progression[
+                (size_t)chordIndex]
+                .root
+             +
+             120)
+            % 12;
+
+        for (int interval :
+             intervals)
+        {
+            if ((interval % 12)
+                == pc)
+            {
+                ++chordToneHits;
+                break;
+            }
+        }
+
+        if (i > 0)
+        {
+            const int jump =
+                std::abs(
+                    event.note
+                    -
+                    lead[i-1].note);
+
+            if (jump > 12)
+                ++largeJumps;
+
+            if (event.note
+                ==
+                lead[i-1].note)
+            {
+                ++repeatedNotes;
+            }
+        }
+    }
+
+    score +=
+        chordToneHits
+        * 2.2;
+
+    score -=
+        largeJumps
+        * 6.0;
+
+    // Some repeated notes are catchy,
+    // too many are dull.
+    if (repeatedNotes > 0)
+        score += 2.0;
+
+    if (repeatedNotes
+        > (int)lead.size()/2)
+    {
+        score -= 10.0;
+    }
+
+    // Reward phrase span without huge chaos.
+    int minNote = 127;
+    int maxNote = 0;
+
+    for (const auto& event : lead)
+    {
+        minNote =
+            juce::jmin(
+                minNote,
+                event.note);
+
+        maxNote =
+            juce::jmax(
+                maxNote,
+                event.note);
+    }
+
+    const int range =
+        maxNote - minNote;
+
+    if (range >= 5
+        && range <= 19)
+    {
+        score += 10.0;
+    }
+    else if (range > 24)
+    {
+        score -= 10.0;
+    }
+
+    return score;
+}
+
+double MelodyEngine::scoreCounter(
+    const std::vector<NoteEvent>& counter,
+    const std::vector<NoteEvent>& lead,
+    const std::array<
+        ChordChoice,
+        4>& progression,
+    const Settings&) const
+{
+    if (counter.empty())
+        return -50.0;
+
+    double score =
+        0.0;
+
+    int overlaps = 0;
+    int freeSpaceHits = 0;
+    int chordToneHits = 0;
+    int unisons = 0;
+
+    for (const auto& event :
+         counter)
+    {
+        if (leadIsActiveNear(
+                lead,
+                event.beat,
+                0.12))
+        {
+            ++overlaps;
+        }
+        else
+        {
+            ++freeSpaceHits;
+        }
+
+        const int chordIndex =
+            juce::jlimit(
+                0,
+                3,
+                (int)(event.beat / 4.0));
+
+        const auto intervals =
+            chordIntervals(
+                progression[
+                    (size_t)chordIndex]
+                    .type);
+
+        const int pc =
+            (event.note
+             -
+             progression[
+                (size_t)chordIndex]
+                .root
+             +
+             120)
+            % 12;
+
+        for (int interval :
+             intervals)
+        {
+            if ((interval % 12)
+                == pc)
+            {
+                ++chordToneHits;
+                break;
+            }
+        }
+
+        for (const auto& leadEvent :
+             lead)
+        {
+            if (std::abs(
+                    leadEvent.beat
+                    - event.beat)
+                < 0.12
+                &&
+                leadEvent.note
+                == event.note)
+            {
+                ++unisons;
+            }
+        }
+    }
+
+    score +=
+        freeSpaceHits
+        * 5.0;
+
+    score +=
+        chordToneHits
+        * 2.0;
+
+    score -=
+        overlaps
+        * 3.5;
+
+    score -=
+        unisons
+        * 8.0;
+
+    return score;
+}
+
+std::vector<MelodyEngine::NoteEvent>
 MelodyEngine::generate(
     const Settings& settings,
     const std::array<
         ChordChoice,
         4>& progression)
 {
-    std::vector<
-        NoteEvent>
-        output;
+    PhraseCandidate bestCandidate;
 
-    int previousLead =
-        72;
+    bestCandidate.score =
+        -100000.0;
 
-    int previousCounter =
-        55;
+    // Generate several full compositions,
+    // score them, then keep the best one.
+    constexpr int numberOfCandidates =
+        12;
 
-    // =================================================
-    // ONE CHORD PER BAR
-    // =================================================
+    for (int candidateIndex = 0;
+         candidateIndex
+            < numberOfCandidates;
+         ++candidateIndex)
+    {
+        PhraseCandidate candidate;
 
+        candidate.lead =
+            generateLeadCandidate(
+                settings,
+                progression);
+
+        candidate.counter =
+            generateCounterCandidate(
+                settings,
+                progression,
+                candidate.lead);
+
+        candidate.score =
+            scoreLead(
+                candidate.lead,
+                progression,
+                settings)
+            +
+            scoreCounter(
+                candidate.counter,
+                candidate.lead,
+                progression,
+                settings);
+
+        if (candidate.score
+            >
+            bestCandidate.score)
+        {
+            bestCandidate =
+                std::move(candidate);
+        }
+    }
+
+    std::vector<NoteEvent> result;
+
+    // Add chord layer first.
     for (int bar = 0;
          bar < settings.bars;
          ++bar)
@@ -333,413 +1256,52 @@ MelodyEngine::generate(
         const double barBeat =
             bar * 4.0;
 
-        // =================================================
-        // CHORD LAYER
-        // CHANNEL 1
-        // =================================================
-
-        const size_t notesInVoicing =
+        const size_t count =
             juce::jmin(
                 (size_t)4,
                 intervals.size());
 
         for (size_t i = 0;
-             i < notesInVoicing;
+             i < count;
              ++i)
         {
             int note =
                 48
-                + chord.root
-                + intervals[i];
+                +
+                chord.root
+                +
+                intervals[i];
 
-            // Keep chords in a useful
-            // middle register.
             while (note > 67)
                 note -= 12;
 
             while (note < 43)
                 note += 12;
 
-            output.push_back(
+            result.push_back(
             {
                 barBeat,
-
                 3.80,
-
                 note,
-
-                juce::jlimit(
-                    1,
-                    127,
-                    70 - (int)i * 3),
-
+                66 - (int)i*3,
                 1
-            });
-        }
-
-        // =================================================
-        // NOTE POOLS FOR THIS EXACT CHORD
-        // =================================================
-
-        const auto leadPool =
-            makePool(
-                chord,
-                60,
-                88);
-
-        const auto counterPool =
-            makePool(
-                chord,
-                43,
-                69);
-
-        // =================================================
-        // RHYTHMIC COMPLEXITY
-        // =================================================
-
-        int divisions =
-            4;
-
-        if (settings.complexity
-            >= 70)
-        {
-            divisions = 16;
-        }
-        else if (
-            settings.complexity
-            >= 40)
-        {
-            divisions = 8;
-        }
-
-        const double step =
-            4.0
-            /
-            (double)divisions;
-
-        // =================================================
-        // MAIN MELODY
-        // CHANNEL 2
-        // =================================================
-
-        for (int index = 0;
-             index < divisions;
-             ++index)
-        {
-            if (!chance(
-                juce::jlimit(
-                    5,
-                    95,
-                    settings.melodyDensity)))
-            {
-                continue;
-            }
-
-            // Leave occasional spaces so the melody
-            // doesn't constantly play.
-            if ((index == 0
-                 ||
-                 index == divisions - 1)
-                &&
-                chance(38))
-            {
-                continue;
-            }
-
-            int note =
-                nearestPitchFromPool(
-                    previousLead,
-                    leadPool,
-                    true);
-
-            // -----------------------------------------
-            // OCCASIONAL OCTAVE MOVEMENT
-            // -----------------------------------------
-
-            if (settings.complexity
-                    > 55
-                &&
-                chance(12))
-            {
-                const int candidate =
-                    note
-                    +
-                    (chance(50)
-                        ? 12
-                        : -12);
-
-                if (candidate >= 60
-                    &&
-                    candidate <= 90)
-                {
-                    note =
-                        candidate;
-                }
-            }
-
-            // -----------------------------------------
-            // OCCASIONAL APPROACH NOTE
-            // -----------------------------------------
-
-            if (settings.complexity
-                    > 70
-                &&
-                chance(12))
-            {
-                note +=
-                    chance(50)
-                        ? 1
-                        : -1;
-            }
-
-            note =
-                juce::jlimit(
-                    60,
-                    90,
-                    note);
-
-            previousLead =
-                note;
-
-            double startBeat =
-                barBeat
-                +
-                index * step;
-
-            double noteLength =
-                step * 0.86;
-
-            if (chance(20))
-            {
-                noteLength =
-                    step * 1.65;
-            }
-
-            if (chance(12))
-            {
-                noteLength =
-                    step * 0.45;
-            }
-
-            int velocity =
-                randomInt(
-                    78,
-                    108);
-
-            // -----------------------------------------
-            // HUMANISATION
-            // -----------------------------------------
-
-            if (settings.humanise
-                > 0)
-            {
-                const double
-                    maxShift =
-                        (settings.humanise
-                         / 100.0)
-                        *
-                        step
-                        *
-                        0.20;
-
-                const double shift =
-                    (randomInt(
-                        -100,
-                        100)
-                     / 100.0)
-                    *
-                    maxShift;
-
-                startBeat +=
-                    shift;
-
-                startBeat =
-                    juce::jmax(
-                        barBeat,
-                        startBeat);
-
-                velocity +=
-                    randomInt(
-                        -settings.humanise
-                            / 3,
-
-                        settings.humanise
-                            / 3);
-            }
-
-            output.push_back(
-            {
-                startBeat,
-
-                noteLength,
-
-                note,
-
-                juce::jlimit(
-                    1,
-                    127,
-                    velocity),
-
-                2
-            });
-        }
-
-        // =================================================
-        // COUNTER MELODY
-        // CHANNEL 3
-        //
-        // Counter notes are placed more often between
-        // the main melody positions.
-        // =================================================
-
-        for (int index = 1;
-             index < divisions;
-             index += 2)
-        {
-            if (!chance(
-                juce::jlimit(
-                    0,
-                    100,
-                    settings.counterDensity)))
-            {
-                continue;
-            }
-
-            // If lead is already very dense,
-            // create more room.
-            if (settings.melodyDensity
-                    > 75
-                &&
-                chance(48))
-            {
-                continue;
-            }
-
-            int note =
-                nearestPitchFromPool(
-                    previousCounter,
-                    counterPool,
-                    true);
-
-            // -----------------------------------------
-            // CONTRARY MOTION
-            //
-            // If the lead is high, counter tends lower.
-            // If lead is lower, counter can rise.
-            // -----------------------------------------
-
-            if (previousLead > 76
-                &&
-                chance(60))
-            {
-                note -=
-                    randomInt(
-                        1,
-                        3);
-            }
-            else if (
-                previousLead < 68
-                &&
-                chance(60))
-            {
-                note +=
-                    randomInt(
-                        1,
-                        3);
-            }
-
-            note =
-                juce::jlimit(
-                    43,
-                    71,
-                    note);
-
-            previousCounter =
-                note;
-
-            double startBeat =
-                barBeat
-                +
-                index * step;
-
-            double length =
-                step * 0.82;
-
-            if (chance(22))
-            {
-                length =
-                    step * 1.45;
-            }
-
-            int velocity =
-                randomInt(
-                    50,
-                    78);
-
-            // -----------------------------------------
-            // COUNTER HUMANISATION
-            // -----------------------------------------
-
-            if (settings.humanise
-                > 0)
-            {
-                const double
-                    maxShift =
-                        (settings.humanise
-                         / 100.0)
-                        *
-                        step
-                        *
-                        0.15;
-
-                startBeat +=
-                    (randomInt(
-                        -100,
-                        100)
-                     / 100.0)
-                    *
-                    maxShift;
-
-                startBeat =
-                    juce::jmax(
-                        barBeat,
-                        startBeat);
-
-                velocity +=
-                    randomInt(
-                        -settings.humanise
-                            / 4,
-
-                        settings.humanise
-                            / 4);
-            }
-
-            output.push_back(
-            {
-                startBeat,
-
-                length,
-
-                note,
-
-                juce::jlimit(
-                    1,
-                    127,
-                    velocity),
-
-                3
             });
         }
     }
 
-    // =================================================
-    // SORT EVERYTHING INTO PLAYBACK ORDER
-    // =================================================
+    result.insert(
+        result.end(),
+        bestCandidate.lead.begin(),
+        bestCandidate.lead.end());
+
+    result.insert(
+        result.end(),
+        bestCandidate.counter.begin(),
+        bestCandidate.counter.end());
 
     std::sort(
-        output.begin(),
-        output.end(),
-
+        result.begin(),
+        result.end(),
         [](
             const NoteEvent& a,
             const NoteEvent& b)
@@ -760,5 +1322,5 @@ MelodyEngine::generate(
                 b.beat;
         });
 
-    return output;
+    return result;
 }
