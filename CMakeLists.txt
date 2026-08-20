@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(GoodAuraMelodyV3 VERSION 3.0.0)
+project(GoodAuraMelodyV4 VERSION 4.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,12 +15,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(JUCE)
 
-juce_add_plugin(GoodAuraMelodyV3
+juce_add_plugin(GoodAuraMelodyV4
     COMPANY_NAME "Good Aura Music"
     BUNDLE_ID "com.goodauramusic.goodauramelody"
 
     PLUGIN_MANUFACTURER_CODE Gaur
-    PLUGIN_CODE Gam3
+    PLUGIN_CODE Gam4
 
     FORMATS VST3
 
@@ -42,7 +42,7 @@ juce_add_plugin(GoodAuraMelodyV3
 )
 
 target_sources(
-    GoodAuraMelodyV3
+    GoodAuraMelodyV4
 
     PRIVATE
         Source/PluginProcessor.cpp
@@ -53,14 +53,17 @@ target_sources(
 
         Source/MelodyEngine.cpp
         Source/MelodyEngine.h
+
+        Source/ProgressionEngine.cpp
+        Source/ProgressionEngine.h
 )
 
 juce_generate_juce_header(
-    GoodAuraMelodyV3
+    GoodAuraMelodyV4
 )
 
 target_compile_definitions(
-    GoodAuraMelodyV3
+    GoodAuraMelodyV4
 
     PRIVATE
         JUCE_WEB_BROWSER=0
@@ -69,7 +72,7 @@ target_compile_definitions(
 )
 
 target_link_libraries(
-    GoodAuraMelodyV3
+    GoodAuraMelodyV4
 
     PRIVATE
         juce::juce_audio_utils
