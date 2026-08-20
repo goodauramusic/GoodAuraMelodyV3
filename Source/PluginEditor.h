@@ -6,7 +6,7 @@
 #include <memory>
 
 // =====================================================
-// GOOD AURA MELODY V4 EDITOR
+// GOOD AURA MELODY V5 EDITOR
 // =====================================================
 
 class GoodAuraMelodyAudioProcessorEditor
@@ -40,7 +40,7 @@ private:
     juce::Label subtitle;
 
     // =================================================
-    // GENERATOR SELECTION
+    // PROGRESSION CONTROLS
     // =================================================
 
     juce::ComboBox keyBox;
@@ -49,11 +49,13 @@ private:
     juce::ComboBox moodBox;
 
     // =================================================
+    // V5 MELODY STYLE
+    // =================================================
+
+    juce::ComboBox melodyStyleBox;
+
+    // =================================================
     // CURRENT PROGRESSION
-    //
-    // Example:
-    //
-    // Cm9 -> Abmaj7 -> Ebmaj7 -> Bb7
     // =================================================
 
     juce::Label progressionLabel;
@@ -66,6 +68,13 @@ private:
     juce::Slider counterDensity;
     juce::Slider complexity;
     juce::Slider humanise;
+
+    // =================================================
+    // NEW V5 CONTROLS
+    // =================================================
+
+    juce::Slider repetition;
+    juce::Slider movement;
 
     // =================================================
     // GENERATION BUTTONS
@@ -100,7 +109,7 @@ private:
         };
 
     // =================================================
-    // MIDI
+    // MIDI EXPORT
     // =================================================
 
     juce::TextButton
