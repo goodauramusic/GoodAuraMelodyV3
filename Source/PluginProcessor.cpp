@@ -3,7 +3,12 @@
 
 #include <cmath>
 
-GoodAuraMelodyAudioProcessor::GoodAuraMelodyAudioProcessor()
+// =====================================================
+// CONSTRUCTOR
+// =====================================================
+
+GoodAuraMelodyAudioProcessor::
+GoodAuraMelodyAudioProcessor()
     : AudioProcessor(
         BusesProperties()
             .withOutput(
@@ -11,265 +16,544 @@ GoodAuraMelodyAudioProcessor::GoodAuraMelodyAudioProcessor()
                 juce::AudioChannelSet::stereo(),
                 true))
 {
+    // Internal preview synth voices
     for (int i = 0; i < 12; ++i)
-        previewSynth.addVoice(new PreviewVoice());
+    {
+        previewSynth.addVoice(
+            new PreviewVoice());
+    }
 
-    previewSynth.addSound(new PreviewSound());
+    previewSynth.addSound(
+        new PreviewSound());
 
-    generateNewPhrase();
+    // Start with a generated progression
+    // and matching melodies.
+    generateProgression();
 }
 
-void GoodAuraMelodyAudioProcessor::prepareToPlay(
+// =====================================================
+// PREPARE
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+prepareToPlay(
     double sampleRate,
     int)
 {
-    sampleRateHz = sampleRate;
-    fallbackBeatPosition = 0.0;
-    previewBeatPosition = 0.0;
+    sampleRateHz =
+        sampleRate;
 
-    previewSynth.setCurrentPlaybackSampleRate(sampleRateHz);
+    previewBeatPosition =
+        0.0;
+
+    previewSynth
+        .setCurrentPlaybackSampleRate(
+            sampleRateHz);
 }
 
-void GoodAuraMelodyAudioProcessor::releaseResources()
+// =====================================================
+// RELEASE
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+releaseResources()
 {
 }
 
-bool GoodAuraMelodyAudioProcessor::isBusesLayoutSupported(
+// =====================================================
+// BUS LAYOUT
+// =====================================================
+
+bool GoodAuraMelodyAudioProcessor::
+isBusesLayoutSupported(
     const BusesLayout& layouts) const
 {
-    return layouts.getMainOutputChannelSet()
-        == juce::AudioChannelSet::stereo();
+    return
+        layouts
+            .getMainOutputChannelSet()
+        ==
+        juce::AudioChannelSet::stereo();
 }
 
-void GoodAuraMelodyAudioProcessor::setChord(
-    int slot,
-    int root,
-    int type)
+// =====================================================
+// GENERATOR SETTINGS
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+setKeyRoot(
+    int root)
 {
-    if (slot < 0 || slot >= 4)
-        return;
-
-    progression[(size_t) slot].root =
-        juce::jlimit(0, 11, root);
-
-    progression[(size_t) slot].type =
-        juce::jmax(0, type);
+    keyRoot =
+        juce::jlimit(
+            0,
+            11,
+            root);
 }
 
-void GoodAuraMelodyAudioProcessor::generateNewPhrase()
+void GoodAuraMelodyAudioProcessor::
+setMinorMode(
+    bool minor)
 {
-    MelodyEngine::Settings settings;
+    minorMode =
+        minor;
+}
 
-    settings.bars = 4;
-    settings.melodyDensity = melodyDensity.load();
-    settings.counterDensity = counterDensity.load();
-    settings.complexity = complexity.load();
-    settings.humanise = humanise.load();
+void GoodAuraMelodyAudioProcessor::
+setGenre(
+    const juce::String& newGenre)
+{
+    genre =
+        newGenre;
+}
+
+void GoodAuraMelodyAudioProcessor::
+setMood(
+    const juce::String& newMood)
+{
+    mood =
+        newMood;
+}
+
+// =====================================================
+// GENERATE CHORD PROGRESSION
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+generateProgression()
+{
+    const auto generated =
+        progressionEngine.generate(
+            keyRoot,
+            minorMode,
+            genre,
+            mood);
+
+    for (int i = 0;
+         i < 4;
+         ++i)
+    {
+        progression[
+            (size_t)i]
+            .root =
+                generated[
+                    (size_t)i]
+                    .root;
+
+        progression[
+            (size_t)i]
+            .type =
+                generated[
+                    (size_t)i]
+                    .type;
+    }
+
+    // IMPORTANT:
+    //
+    // Every time the chords change,
+    // generate melodies that follow
+    // the NEW progression.
+    generateMelodies();
+}
+
+// =====================================================
+// GENERATE MAIN + COUNTER MELODY
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+generateMelodies()
+{
+    MelodyEngine::Settings
+        settings;
+
+    settings.bars =
+        4;
+
+    settings.melodyDensity =
+        melodyDensity.load();
+
+    settings.counterDensity =
+        counterDensity.load();
+
+    settings.complexity =
+        complexity.load();
+
+    settings.humanise =
+        humanise.load();
 
     auto generated =
-        engine.generate(settings, progression);
+        melodyEngine.generate(
+            settings,
+            progression);
 
-    const juce::ScopedLock lock(phraseLock);
+    const juce::ScopedLock
+        lock(
+            phraseLock);
 
-    phrase = std::move(generated);
+    phrase =
+        std::move(
+            generated);
 }
 
-void GoodAuraMelodyAudioProcessor::startPreview()
+// =====================================================
+// PROGRESSION TEXT
+//
+// Example:
+// Cm9 -> Abmaj7 -> Ebmaj7 -> Bb7
+// =====================================================
+
+juce::String
+GoodAuraMelodyAudioProcessor::
+getProgressionText() const
 {
-    previewBeatPosition = 0.0;
-    previewPlaying = true;
+    std::array<
+        ProgressionEngine::ChordChoice,
+        4>
+    converted {};
+
+    for (int i = 0;
+         i < 4;
+         ++i)
+    {
+        converted[
+            (size_t)i]
+            .root =
+                progression[
+                    (size_t)i]
+                    .root;
+
+        converted[
+            (size_t)i]
+            .type =
+                progression[
+                    (size_t)i]
+                    .type;
+    }
+
+    return
+        progressionEngine
+            .describe(
+                converted);
 }
 
-void GoodAuraMelodyAudioProcessor::stopPreview()
+// =====================================================
+// START PREVIEW
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+startPreview()
 {
-    previewPlaying = false;
-    previewBeatPosition = 0.0;
+    // Kill any old preview notes first.
+    previewSynth.allNotesOff(
+        0,
+        false);
 
-    previewSynth.allNotesOff(0, false);
+    previewBeatPosition =
+        0.0;
+
+    previewPlaying =
+        true;
 }
 
-void GoodAuraMelodyAudioProcessor::emitEventsForWindow(
+// =====================================================
+// STOP PREVIEW
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+stopPreview()
+{
+    previewPlaying =
+        false;
+
+    previewBeatPosition =
+        0.0;
+
+    previewSynth.allNotesOff(
+        0,
+        false);
+}
+
+// =====================================================
+// ADD GENERATED NOTES TO CURRENT AUDIO BLOCK
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+emitEventsForWindow(
     juce::MidiBuffer& midi,
-    double blockStart,
-    double blockEnd,
+    double blockStartBeat,
+    double blockEndBeat,
     double samplesPerBeat,
     int numSamples)
 {
-    constexpr double loopLength = 16.0;
+    constexpr double loopLength =
+        16.0;
 
-    auto emit =
+    // Helper for one section of the loop.
+    auto emitSection =
         [&](
             double localStart,
             double localEnd,
             double absoluteStart)
         {
-            for (const auto& event : phrase)
+            for (const auto& event :
+                 phrase)
             {
-                const double noteOnBeat =
-                    event.beat;
+                const double
+                    noteOnBeat =
+                        event.beat;
 
-                const double noteOffBeat =
-                    event.beat +
-                    event.lengthBeats;
+                const double
+                    noteOffBeat =
+                        event.beat
+                        +
+                        event.lengthBeats;
 
-                if (noteOnBeat >= localStart
-                    && noteOnBeat < localEnd)
+                // =====================================
+                // NOTE ON
+                // =====================================
+
+                if (noteOnBeat
+                        >= localStart
+                    &&
+                    noteOnBeat
+                        < localEnd)
                 {
-                    const double absoluteBeat =
-                        absoluteStart +
-                        (noteOnBeat - localStart);
+                    const double
+                        absoluteBeat =
+                            absoluteStart
+                            +
+                            (
+                                noteOnBeat
+                                -
+                                localStart
+                            );
 
-                    const int samplePosition =
-                        juce::jlimit(
-                            0,
-                            numSamples - 1,
-                            (int) std::floor(
-                                (absoluteBeat - blockStart)
-                                * samplesPerBeat));
+                    const int
+                        samplePosition =
+                            juce::jlimit(
+                                0,
+                                juce::jmax(
+                                    0,
+                                    numSamples - 1),
+
+                                (int)std::floor(
+                                    (
+                                        absoluteBeat
+                                        -
+                                        blockStartBeat
+                                    )
+                                    *
+                                    samplesPerBeat));
 
                     midi.addEvent(
-                        juce::MidiMessage::noteOn(
-                            event.channel,
-                            event.note,
-                            (juce::uint8) event.velocity),
+                        juce::MidiMessage::
+                            noteOn(
+                                event.channel,
+                                event.note,
+                                (juce::uint8)
+                                    event.velocity),
+
                         samplePosition);
                 }
 
-                if (noteOffBeat >= localStart
-                    && noteOffBeat < localEnd)
-                {
-                    const double absoluteBeat =
-                        absoluteStart +
-                        (noteOffBeat - localStart);
+                // =====================================
+                // NOTE OFF
+                // =====================================
 
-                    const int samplePosition =
-                        juce::jlimit(
-                            0,
-                            numSamples - 1,
-                            (int) std::floor(
-                                (absoluteBeat - blockStart)
-                                * samplesPerBeat));
+                if (noteOffBeat
+                        >= localStart
+                    &&
+                    noteOffBeat
+                        < localEnd)
+                {
+                    const double
+                        absoluteBeat =
+                            absoluteStart
+                            +
+                            (
+                                noteOffBeat
+                                -
+                                localStart
+                            );
+
+                    const int
+                        samplePosition =
+                            juce::jlimit(
+                                0,
+                                juce::jmax(
+                                    0,
+                                    numSamples - 1),
+
+                                (int)std::floor(
+                                    (
+                                        absoluteBeat
+                                        -
+                                        blockStartBeat
+                                    )
+                                    *
+                                    samplesPerBeat));
 
                     midi.addEvent(
-                        juce::MidiMessage::noteOff(
-                            event.channel,
-                            event.note),
+                        juce::MidiMessage::
+                            noteOff(
+                                event.channel,
+                                event.note),
+
                         samplePosition);
                 }
             }
         };
 
-    double cursor = blockStart;
+    double cursor =
+        blockStartBeat;
 
-    while (cursor < blockEnd)
+    while (cursor
+           < blockEndBeat)
     {
-        const double localStart =
-            std::fmod(
-                std::fmod(cursor, loopLength)
-                    + loopLength,
-                loopLength);
+        const double
+            localStart =
+                std::fmod(
+                    std::fmod(
+                        cursor,
+                        loopLength)
+                    +
+                    loopLength,
 
-        const double remaining =
-            loopLength - localStart;
+                    loopLength);
 
-        const double thisEnd =
-            juce::jmin(
-                blockEnd,
-                cursor + remaining);
+        const double
+            beatsUntilLoopEnd =
+                loopLength
+                -
+                localStart;
 
-        const double localEnd =
-            localStart +
-            (thisEnd - cursor);
+        const double
+            sectionEnd =
+                juce::jmin(
+                    blockEndBeat,
+                    cursor
+                    +
+                    beatsUntilLoopEnd);
 
-        emit(
+        const double
+            localEnd =
+                localStart
+                +
+                (
+                    sectionEnd
+                    -
+                    cursor
+                );
+
+        emitSection(
             localStart,
             localEnd,
             cursor);
 
-        cursor = thisEnd;
+        cursor =
+            sectionEnd;
     }
 }
 
-void GoodAuraMelodyAudioProcessor::processBlock(
+// =====================================================
+// AUDIO + MIDI PROCESSING
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midi)
 {
-    juce::ScopedNoDenormals noDenormals;
+    juce::ScopedNoDenormals
+        noDenormals;
 
+    // Clear audio because this is primarily
+    // a MIDI generation instrument.
     buffer.clear();
 
-    double bpm = 120.0;
+    double bpm =
+        120.0;
 
-    double blockStart =
-        fallbackBeatPosition;
-
-    bool hostPlaying = false;
-
-    if (auto* playHead = getPlayHead())
+    // Follow FL Studio's tempo.
+    if (auto* playHead =
+        getPlayHead())
     {
         if (auto position =
-                playHead->getPosition())
+            playHead->getPosition())
         {
-            if (auto hostBpm =
-                    position->getBpm())
+            if (auto currentBpm =
+                position->getBpm())
             {
-                bpm = *hostBpm;
+                bpm =
+                    *currentBpm;
             }
-
-            if (auto ppq =
-                    position->getPpqPosition())
-            {
-                blockStart = *ppq;
-            }
-
-            hostPlaying =
-                position->getIsPlaying();
         }
     }
 
-    const double samplesPerBeat =
-        sampleRateHz
-        * 60.0
-        / juce::jmax(1.0, bpm);
+    bpm =
+        juce::jmax(
+            1.0,
+            bpm);
 
-    const double blockBeats =
-        buffer.getNumSamples()
-        / samplesPerBeat;
+    const double
+        samplesPerBeat =
+            sampleRateHz
+            *
+            60.0
+            /
+            bpm;
 
-    juce::MidiBuffer generatedMidi;
+    const double
+        blockBeats =
+            buffer.getNumSamples()
+            /
+            samplesPerBeat;
 
+    juce::MidiBuffer
+        generatedMidi;
+
+    // =================================================
+    // GENERATED PREVIEW
+    // =================================================
+
+    if (previewPlaying.load())
     {
-        const juce::ScopedLock lock(
-            phraseLock);
+        const juce::ScopedLock
+            lock(
+                phraseLock);
 
-        if (previewPlaying.load())
+        emitEventsForWindow(
+            generatedMidi,
+
+            previewBeatPosition,
+
+            previewBeatPosition
+                +
+                blockBeats,
+
+            samplesPerBeat,
+
+            buffer.getNumSamples());
+
+        previewBeatPosition +=
+            blockBeats;
+
+        // Four bars of 4/4 = 16 beats.
+        if (previewBeatPosition
+            >= 16.0)
         {
-            blockStart =
-                previewBeatPosition;
-
-            emitEventsForWindow(
-                generatedMidi,
-                blockStart,
-                blockStart + blockBeats,
-                samplesPerBeat,
-                buffer.getNumSamples());
-
             previewBeatPosition =
                 std::fmod(
-                    previewBeatPosition
-                        + blockBeats,
+                    previewBeatPosition,
                     16.0);
         }
-        else if (hostPlaying)
-        {
-            emitEventsForWindow(
-                generatedMidi,
-                blockStart,
-                blockStart + blockBeats,
-                samplesPerBeat,
-                buffer.getNumSamples());
-        }
     }
+
+    // =================================================
+    // SEND MIDI OUT OF THE PLUGIN
+    //
+    // This allows FL Studio to receive the
+    // generated chord/melody MIDI.
+    // =================================================
 
     midi.addEvents(
         generatedMidi,
@@ -277,17 +561,27 @@ void GoodAuraMelodyAudioProcessor::processBlock(
         buffer.getNumSamples(),
         0);
 
+    // =================================================
+    // INTERNAL SOUND PREVIEW
+    //
+    // We also feed the same generated MIDI into
+    // our basic internal synth so pressing PLAY
+    // produces an audible preview.
+    // =================================================
+
     previewSynth.renderNextBlock(
         buffer,
         generatedMidi,
         0,
         buffer.getNumSamples());
-
-    fallbackBeatPosition =
-        blockStart + blockBeats;
 }
 
-bool GoodAuraMelodyAudioProcessor::writeMidiFile(
+// =====================================================
+// WRITE MIDI FILE
+// =====================================================
+
+bool GoodAuraMelodyAudioProcessor::
+writeMidiFile(
     const juce::File& file)
 {
     std::vector<
@@ -295,65 +589,155 @@ bool GoodAuraMelodyAudioProcessor::writeMidiFile(
         localPhrase;
 
     {
-        const juce::ScopedLock lock(
-            phraseLock);
+        const juce::ScopedLock
+            lock(
+                phraseLock);
 
-        localPhrase = phrase;
+        localPhrase =
+            phrase;
     }
 
-    juce::MidiMessageSequence sequence;
+    if (localPhrase.empty())
+        return false;
 
-    constexpr int ticksPerQuarter = 960;
+    constexpr int
+        ticksPerQuarter =
+            960;
 
-    for (const auto& event : localPhrase)
+    // Separate tracks:
+    //
+    // Track 1 = Chords
+    // Track 2 = Main melody
+    // Track 3 = Counter melody
+
+    juce::MidiMessageSequence
+        chordTrack;
+
+    juce::MidiMessageSequence
+        melodyTrack;
+
+    juce::MidiMessageSequence
+        counterTrack;
+
+    for (const auto& event :
+         localPhrase)
     {
         auto noteOn =
-            juce::MidiMessage::noteOn(
-                event.channel,
-                event.note,
-                (juce::uint8) event.velocity);
+            juce::MidiMessage::
+                noteOn(
+                    event.channel,
+                    event.note,
+                    (juce::uint8)
+                        event.velocity);
 
         noteOn.setTimeStamp(
-            event.beat * ticksPerQuarter);
+            event.beat
+            *
+            ticksPerQuarter);
 
         auto noteOff =
-            juce::MidiMessage::noteOff(
-                event.channel,
-                event.note);
+            juce::MidiMessage::
+                noteOff(
+                    event.channel,
+                    event.note);
 
         noteOff.setTimeStamp(
-            (event.beat + event.lengthBeats)
-            * ticksPerQuarter);
+            (
+                event.beat
+                +
+                event.lengthBeats
+            )
+            *
+            ticksPerQuarter);
 
-        sequence.addEvent(noteOn);
-        sequence.addEvent(noteOff);
+        juce::MidiMessageSequence*
+            destinationTrack =
+                nullptr;
+
+        if (event.channel == 1)
+        {
+            destinationTrack =
+                &chordTrack;
+        }
+        else if (
+            event.channel == 2)
+        {
+            destinationTrack =
+                &melodyTrack;
+        }
+        else
+        {
+            destinationTrack =
+                &counterTrack;
+        }
+
+        destinationTrack
+            ->addEvent(
+                noteOn);
+
+        destinationTrack
+            ->addEvent(
+                noteOff);
     }
 
-    sequence.updateMatchedPairs();
+    chordTrack
+        .updateMatchedPairs();
 
-    juce::MidiFile midiFile;
+    melodyTrack
+        .updateMatchedPairs();
 
-    midiFile.setTicksPerQuarterNote(
-        ticksPerQuarter);
+    counterTrack
+        .updateMatchedPairs();
 
-    midiFile.addTrack(sequence);
+    juce::MidiFile
+        midiFile;
 
-    file.deleteFile();
+    midiFile
+        .setTicksPerQuarterNote(
+            ticksPerQuarter);
 
-    juce::FileOutputStream stream(file);
+    midiFile.addTrack(
+        chordTrack);
+
+    midiFile.addTrack(
+        melodyTrack);
+
+    midiFile.addTrack(
+        counterTrack);
+
+    // Remove existing destination
+    // before creating the new MIDI file.
+    if (file.existsAsFile())
+    {
+        if (!file.deleteFile())
+            return false;
+    }
+
+    juce::FileOutputStream
+        stream(
+            file);
 
     if (!stream.openedOk())
         return false;
 
-    return midiFile.writeTo(stream);
+    return
+        midiFile.writeTo(
+            stream);
 }
 
+// =====================================================
+// TEMPORARY MIDI FILE
+// =====================================================
+
 juce::File
-GoodAuraMelodyAudioProcessor::writeMidiToTemporaryFile()
+GoodAuraMelodyAudioProcessor::
+writeMidiToTemporaryFile()
 {
-    auto file =
-        juce::File::getSpecialLocation(
-            juce::File::tempDirectory)
+    const auto file =
+        juce::File::
+            getSpecialLocation(
+                juce::File::
+                    tempDirectory)
             .getNonexistentChildFile(
                 "GoodAuraMelody",
                 ".mid");
@@ -364,16 +748,50 @@ GoodAuraMelodyAudioProcessor::writeMidiToTemporaryFile()
     return {};
 }
 
-bool GoodAuraMelodyAudioProcessor::exportMidiToFile(
+// =====================================================
+// EXPORT MIDI
+// =====================================================
+
+bool GoodAuraMelodyAudioProcessor::
+exportMidiToFile(
     const juce::File& destination)
 {
-    return writeMidiFile(destination);
+    return
+        writeMidiFile(
+            destination);
 }
 
-void GoodAuraMelodyAudioProcessor::getStateInformation(
+// =====================================================
+// SAVE PLUGIN STATE
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+getStateInformation(
     juce::MemoryBlock& destination)
 {
-    juce::ValueTree state("GoodAuraMelody");
+    juce::ValueTree
+        state(
+            "GoodAuraMelody");
+
+    state.setProperty(
+        "keyRoot",
+        keyRoot,
+        nullptr);
+
+    state.setProperty(
+        "minorMode",
+        minorMode,
+        nullptr);
+
+    state.setProperty(
+        "genre",
+        genre,
+        nullptr);
+
+    state.setProperty(
+        "mood",
+        mood,
+        nullptr);
 
     state.setProperty(
         "melodyDensity",
@@ -395,82 +813,167 @@ void GoodAuraMelodyAudioProcessor::getStateInformation(
         humanise.load(),
         nullptr);
 
-    for (int i = 0; i < 4; ++i)
+    // Save the actual generated chords too.
+    for (int i = 0;
+         i < 4;
+         ++i)
     {
         state.setProperty(
-            "root" + juce::String(i),
-            progression[(size_t) i].root,
+            "chordRoot"
+                +
+                juce::String(i),
+
+            progression[
+                (size_t)i]
+                .root,
+
             nullptr);
 
         state.setProperty(
-            "type" + juce::String(i),
-            progression[(size_t) i].type,
+            "chordType"
+                +
+                juce::String(i),
+
+            progression[
+                (size_t)i]
+                .type,
+
             nullptr);
     }
 
-    if (auto xml = state.createXml())
-        copyXmlToBinary(*xml, destination);
+    if (auto xml =
+        state.createXml())
+    {
+        copyXmlToBinary(
+            *xml,
+            destination);
+    }
 }
 
-void GoodAuraMelodyAudioProcessor::setStateInformation(
+// =====================================================
+// LOAD PLUGIN STATE
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+setStateInformation(
     const void* data,
     int size)
 {
-    if (auto xml =
-            getXmlFromBinary(data, size))
+    auto xml =
+        getXmlFromBinary(
+            data,
+            size);
+
+    if (xml == nullptr)
+        return;
+
+    auto state =
+        juce::ValueTree::
+            fromXml(
+                *xml);
+
+    if (!state.isValid())
+        return;
+
+    keyRoot =
+        (int)state.getProperty(
+            "keyRoot",
+            0);
+
+    minorMode =
+        (bool)state.getProperty(
+            "minorMode",
+            false);
+
+    genre =
+        state.getProperty(
+            "genre",
+            "R&B")
+            .toString();
+
+    mood =
+        state.getProperty(
+            "mood",
+            "Smooth")
+            .toString();
+
+    melodyDensity =
+        (int)state.getProperty(
+            "melodyDensity",
+            65);
+
+    counterDensity =
+        (int)state.getProperty(
+            "counterDensity",
+            45);
+
+    complexity =
+        (int)state.getProperty(
+            "complexity",
+            55);
+
+    humanise =
+        (int)state.getProperty(
+            "humanise",
+            10);
+
+    // Restore the exact progression that
+    // was saved with the FL Studio project.
+    for (int i = 0;
+         i < 4;
+         ++i)
     {
-        auto state =
-            juce::ValueTree::fromXml(*xml);
+        progression[
+            (size_t)i]
+            .root =
+                (int)state.getProperty(
+                    "chordRoot"
+                        +
+                        juce::String(i),
 
-        if (state.isValid())
-        {
-            melodyDensity =
-                (int) state.getProperty(
-                    "melodyDensity",
-                    65);
+                    progression[
+                        (size_t)i]
+                        .root);
 
-            counterDensity =
-                (int) state.getProperty(
-                    "counterDensity",
-                    45);
+        progression[
+            (size_t)i]
+            .type =
+                (int)state.getProperty(
+                    "chordType"
+                        +
+                        juce::String(i),
 
-            complexity =
-                (int) state.getProperty(
-                    "complexity",
-                    55);
-
-            humanise =
-                (int) state.getProperty(
-                    "humanise",
-                    10);
-
-            for (int i = 0; i < 4; ++i)
-            {
-                progression[(size_t) i].root =
-                    (int) state.getProperty(
-                        "root" + juce::String(i),
-                        0);
-
-                progression[(size_t) i].type =
-                    (int) state.getProperty(
-                        "type" + juce::String(i),
-                        0);
-            }
-
-            generateNewPhrase();
-        }
+                    progression[
+                        (size_t)i]
+                        .type);
     }
+
+    // Regenerate melody around the
+    // restored progression.
+    generateMelodies();
 }
+
+// =====================================================
+// CREATE EDITOR
+// =====================================================
 
 juce::AudioProcessorEditor*
-GoodAuraMelodyAudioProcessor::createEditor()
+GoodAuraMelodyAudioProcessor::
+createEditor()
 {
-    return new GoodAuraMelodyAudioProcessorEditor(
-        *this);
+    return
+        new GoodAuraMelodyAudioProcessorEditor(
+            *this);
 }
 
+// =====================================================
+// JUCE PLUGIN ENTRY POINT
+// =====================================================
+
 juce::AudioProcessor*
-JUCE_CALLTYPE createPluginFilter()
+JUCE_CALLTYPE
+createPluginFilter()
 {
-    return new GoodAuraMelodyAudioProcessor();
+    return
+        new GoodAuraMelodyAudioProcessor();
 }
