@@ -1,4 +1,4 @@
-name: Build Good Aura Melody V4
+name: Build Good Aura Melody V5
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
 
       - name: Locate VST3
         run: |
-          echo "Searching for Good Aura Melody V4..."
+          echo "Searching for Good Aura Melody V5..."
           find build -type d -name "*.vst3" -print
 
       - name: Package VST3
@@ -55,7 +55,7 @@ jobs:
             --sequesterRsrc \
             --keepParent \
             "$VST3_PATH" \
-            "artifact/GoodAuraMelody-V4-macOS-Universal.zip"
+            "artifact/GoodAuraMelody-V5-macOS-Universal.zip"
 
       - name: Verify architecture
         shell: bash
@@ -72,5 +72,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GoodAuraMelody-V4-macOS-Universal
+          name: GoodAuraMelody-V5-macOS-Universal
           path: artifact/
