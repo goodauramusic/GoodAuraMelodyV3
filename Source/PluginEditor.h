@@ -3,8 +3,11 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-#include <array>
 #include <memory>
+
+// =====================================================
+// GOOD AURA MELODY V4 EDITOR
+// =====================================================
 
 class GoodAuraMelodyAudioProcessorEditor
     : public juce::AudioProcessorEditor
@@ -22,45 +25,67 @@ public:
     void resized() override;
 
 private:
+    // =================================================
+    // PROCESSOR
+    // =================================================
+
     GoodAuraMelodyAudioProcessor&
         processor;
 
+    // =================================================
+    // TITLES
+    // =================================================
+
     juce::Label title;
     juce::Label subtitle;
-    juce::Label info;
 
-    std::array<
-        juce::ComboBox,
-        4>
-    rootBoxes;
+    // =================================================
+    // GENERATOR SELECTION
+    // =================================================
 
-    std::array<
-        juce::ComboBox,
-        4>
-    chordBoxes;
+    juce::ComboBox keyBox;
+    juce::ComboBox modeBox;
+    juce::ComboBox genreBox;
+    juce::ComboBox moodBox;
 
-    std::array<
-        juce::Label,
-        4>
-    chordLabels;
+    // =================================================
+    // CURRENT PROGRESSION
+    //
+    // Example:
+    //
+    // Cm9 -> Abmaj7 -> Ebmaj7 -> Bb7
+    // =================================================
 
-    juce::Slider
-        melodyDensity;
+    juce::Label progressionLabel;
 
-    juce::Slider
-        counterDensity;
+    // =================================================
+    // MELODY CONTROLS
+    // =================================================
 
-    juce::Slider
-        complexity;
+    juce::Slider melodyDensity;
+    juce::Slider counterDensity;
+    juce::Slider complexity;
+    juce::Slider humanise;
 
-    juce::Slider
-        humanise;
+    // =================================================
+    // GENERATION BUTTONS
+    // =================================================
 
     juce::TextButton
-        generateButton
+        generateProgressionButton
         {
-            "GENERATE NEW PHRASE"
+            "GENERATE CHORDS"
         };
+
+    juce::TextButton
+        generateMelodyButton
+        {
+            "GENERATE MELODIES"
+        };
+
+    // =================================================
+    // PLAYBACK
+    // =================================================
 
     juce::TextButton
         playButton
@@ -74,31 +99,42 @@ private:
             "STOP"
         };
 
+    // =================================================
+    // MIDI
+    // =================================================
+
     juce::TextButton
         exportButton
         {
             "EXPORT MIDI"
         };
 
-    juce::TextButton
-        dragButton
-        {
-            "DRAG MIDI"
-        };
+    // =================================================
+    // STATUS
+    // =================================================
+
+    juce::Label status;
+
+    // =================================================
+    // FILE CHOOSER
+    // =================================================
 
     std::unique_ptr<
         juce::FileChooser>
-    fileChooser;
+        fileChooser;
+
+    // =================================================
+    // HELPERS
+    // =================================================
 
     void configureSlider(
-        juce::Slider&,
-        const juce::String&,
-        int);
+        juce::Slider& slider,
+        const juce::String& name,
+        int initialValue);
 
-    void syncChord(
-        int index);
+    void syncGeneratorSettings();
 
-    void refreshStatus();
+    void refreshProgressionText();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
         GoodAuraMelodyAudioProcessorEditor
