@@ -16,7 +16,6 @@ GoodAuraMelodyAudioProcessor()
                 juce::AudioChannelSet::stereo(),
                 true))
 {
-    // Internal preview synth voices
     for (int i = 0; i < 12; ++i)
     {
         previewSynth.addVoice(
@@ -26,8 +25,6 @@ GoodAuraMelodyAudioProcessor()
     previewSynth.addSound(
         new PreviewSound());
 
-    // Start with a generated progression
-    // and matching melodies.
     generateProgression();
 }
 
@@ -76,7 +73,7 @@ isBusesLayoutSupported(
 }
 
 // =====================================================
-// GENERATOR SETTINGS
+// PROGRESSION SETTINGS
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -115,7 +112,19 @@ setMood(
 }
 
 // =====================================================
-// GENERATE CHORD PROGRESSION
+// MELODY STYLE
+// =====================================================
+
+void GoodAuraMelodyAudioProcessor::
+setMelodyStyle(
+    const juce::String& style)
+{
+    melodyStyle =
+        style;
+}
+
+// =====================================================
+// GENERATE PROGRESSION
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -147,16 +156,13 @@ generateProgression()
                     .type;
     }
 
-    // IMPORTANT:
-    //
-    // Every time the chords change,
-    // generate melodies that follow
-    // the NEW progression.
+    // Generate a fresh melody every time
+    // the progression changes.
     generateMelodies();
 }
 
 // =====================================================
-// GENERATE MAIN + COUNTER MELODY
+// GENERATE V5 MELODY + COUNTER
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -180,6 +186,15 @@ generateMelodies()
     settings.humanise =
         humanise.load();
 
+    settings.repetition =
+        repetition.load();
+
+    settings.movement =
+        movement.load();
+
+    settings.style =
+        melodyStyle;
+
     auto generated =
         melodyEngine.generate(
             settings,
@@ -195,10 +210,7 @@ generateMelodies()
 }
 
 // =====================================================
-// PROGRESSION TEXT
-//
-// Example:
-// Cm9 -> Abmaj7 -> Ebmaj7 -> Bb7
+// DISPLAY CURRENT PROGRESSION
 // =====================================================
 
 juce::String
@@ -242,7 +254,6 @@ getProgressionText() const
 void GoodAuraMelodyAudioProcessor::
 startPreview()
 {
-    // Kill any old preview notes first.
     previewSynth.allNotesOff(
         0,
         false);
@@ -273,7 +284,7 @@ stopPreview()
 }
 
 // =====================================================
-// ADD GENERATED NOTES TO CURRENT AUDIO BLOCK
+// EMIT MIDI FOR CURRENT PLAYBACK WINDOW
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -287,7 +298,6 @@ emitEventsForWindow(
     constexpr double loopLength =
         16.0;
 
-    // Helper for one section of the loop.
     auto emitSection =
         [&](
             double localStart,
@@ -297,52 +307,42 @@ emitEventsForWindow(
             for (const auto& event :
                  phrase)
             {
-                const double
-                    noteOnBeat =
-                        event.beat;
+                const double noteOnBeat =
+                    event.beat;
 
-                const double
-                    noteOffBeat =
-                        event.beat
-                        +
-                        event.lengthBeats;
+                const double noteOffBeat =
+                    event.beat
+                    +
+                    event.lengthBeats;
 
-                // =====================================
-                // NOTE ON
-                // =====================================
-
-                if (noteOnBeat
-                        >= localStart
+                if (noteOnBeat >= localStart
                     &&
-                    noteOnBeat
-                        < localEnd)
+                    noteOnBeat < localEnd)
                 {
-                    const double
-                        absoluteBeat =
-                            absoluteStart
-                            +
-                            (
-                                noteOnBeat
-                                -
-                                localStart
-                            );
+                    const double absoluteBeat =
+                        absoluteStart
+                        +
+                        (
+                            noteOnBeat
+                            -
+                            localStart
+                        );
 
-                    const int
-                        samplePosition =
-                            juce::jlimit(
+                    const int samplePosition =
+                        juce::jlimit(
+                            0,
+                            juce::jmax(
                                 0,
-                                juce::jmax(
-                                    0,
-                                    numSamples - 1),
+                                numSamples - 1),
 
-                                (int)std::floor(
-                                    (
-                                        absoluteBeat
-                                        -
-                                        blockStartBeat
-                                    )
-                                    *
-                                    samplesPerBeat));
+                            (int)std::floor(
+                                (
+                                    absoluteBeat
+                                    -
+                                    blockStartBeat
+                                )
+                                *
+                                samplesPerBeat));
 
                     midi.addEvent(
                         juce::MidiMessage::
@@ -355,42 +355,34 @@ emitEventsForWindow(
                         samplePosition);
                 }
 
-                // =====================================
-                // NOTE OFF
-                // =====================================
-
-                if (noteOffBeat
-                        >= localStart
+                if (noteOffBeat >= localStart
                     &&
-                    noteOffBeat
-                        < localEnd)
+                    noteOffBeat < localEnd)
                 {
-                    const double
-                        absoluteBeat =
-                            absoluteStart
-                            +
-                            (
-                                noteOffBeat
-                                -
-                                localStart
-                            );
+                    const double absoluteBeat =
+                        absoluteStart
+                        +
+                        (
+                            noteOffBeat
+                            -
+                            localStart
+                        );
 
-                    const int
-                        samplePosition =
-                            juce::jlimit(
+                    const int samplePosition =
+                        juce::jlimit(
+                            0,
+                            juce::jmax(
                                 0,
-                                juce::jmax(
-                                    0,
-                                    numSamples - 1),
+                                numSamples - 1),
 
-                                (int)std::floor(
-                                    (
-                                        absoluteBeat
-                                        -
-                                        blockStartBeat
-                                    )
-                                    *
-                                    samplesPerBeat));
+                            (int)std::floor(
+                                (
+                                    absoluteBeat
+                                    -
+                                    blockStartBeat
+                                )
+                                *
+                                samplesPerBeat));
 
                     midi.addEvent(
                         juce::MidiMessage::
@@ -406,43 +398,39 @@ emitEventsForWindow(
     double cursor =
         blockStartBeat;
 
-    while (cursor
-           < blockEndBeat)
+    while (cursor <
+           blockEndBeat)
     {
-        const double
-            localStart =
+        const double localStart =
+            std::fmod(
                 std::fmod(
-                    std::fmod(
-                        cursor,
-                        loopLength)
-                    +
-                    loopLength,
-
-                    loopLength);
-
-        const double
-            beatsUntilLoopEnd =
-                loopLength
-                -
-                localStart;
-
-        const double
-            sectionEnd =
-                juce::jmin(
-                    blockEndBeat,
-                    cursor
-                    +
-                    beatsUntilLoopEnd);
-
-        const double
-            localEnd =
-                localStart
+                    cursor,
+                    loopLength)
                 +
-                (
-                    sectionEnd
-                    -
-                    cursor
-                );
+                loopLength,
+
+                loopLength);
+
+        const double remaining =
+            loopLength
+            -
+            localStart;
+
+        const double sectionEnd =
+            juce::jmin(
+                blockEndBeat,
+                cursor
+                +
+                remaining);
+
+        const double localEnd =
+            localStart
+            +
+            (
+                sectionEnd
+                -
+                cursor
+            );
 
         emitSection(
             localStart,
@@ -455,7 +443,7 @@ emitEventsForWindow(
 }
 
 // =====================================================
-// AUDIO + MIDI PROCESSING
+// AUDIO / MIDI PROCESSING
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -466,14 +454,11 @@ processBlock(
     juce::ScopedNoDenormals
         noDenormals;
 
-    // Clear audio because this is primarily
-    // a MIDI generation instrument.
     buffer.clear();
 
     double bpm =
         120.0;
 
-    // Follow FL Studio's tempo.
     if (auto* playHead =
         getPlayHead())
     {
@@ -494,26 +479,20 @@ processBlock(
             1.0,
             bpm);
 
-    const double
-        samplesPerBeat =
-            sampleRateHz
-            *
-            60.0
-            /
-            bpm;
+    const double samplesPerBeat =
+        sampleRateHz
+        *
+        60.0
+        /
+        bpm;
 
-    const double
-        blockBeats =
-            buffer.getNumSamples()
-            /
-            samplesPerBeat;
+    const double blockBeats =
+        buffer.getNumSamples()
+        /
+        samplesPerBeat;
 
     juce::MidiBuffer
         generatedMidi;
-
-    // =================================================
-    // GENERATED PREVIEW
-    // =================================================
 
     if (previewPlaying.load())
     {
@@ -537,7 +516,6 @@ processBlock(
         previewBeatPosition +=
             blockBeats;
 
-        // Four bars of 4/4 = 16 beats.
         if (previewBeatPosition
             >= 16.0)
         {
@@ -548,27 +526,14 @@ processBlock(
         }
     }
 
-    // =================================================
-    // SEND MIDI OUT OF THE PLUGIN
-    //
-    // This allows FL Studio to receive the
-    // generated chord/melody MIDI.
-    // =================================================
-
+    // MIDI output to FL Studio.
     midi.addEvents(
         generatedMidi,
         0,
         buffer.getNumSamples(),
         0);
 
-    // =================================================
-    // INTERNAL SOUND PREVIEW
-    //
-    // We also feed the same generated MIDI into
-    // our basic internal synth so pressing PLAY
-    // produces an audible preview.
-    // =================================================
-
+    // Built-in preview sound.
     previewSynth.renderNextBlock(
         buffer,
         generatedMidi,
@@ -577,7 +542,7 @@ processBlock(
 }
 
 // =====================================================
-// WRITE MIDI FILE
+// MIDI EXPORT
 // =====================================================
 
 bool GoodAuraMelodyAudioProcessor::
@@ -600,15 +565,8 @@ writeMidiFile(
     if (localPhrase.empty())
         return false;
 
-    constexpr int
-        ticksPerQuarter =
-            960;
-
-    // Separate tracks:
-    //
-    // Track 1 = Chords
-    // Track 2 = Main melody
-    // Track 3 = Counter melody
+    constexpr int ticksPerQuarter =
+        960;
 
     juce::MidiMessageSequence
         chordTrack;
@@ -680,21 +638,15 @@ writeMidiFile(
                 noteOff);
     }
 
-    chordTrack
-        .updateMatchedPairs();
-
-    melodyTrack
-        .updateMatchedPairs();
-
-    counterTrack
-        .updateMatchedPairs();
+    chordTrack.updateMatchedPairs();
+    melodyTrack.updateMatchedPairs();
+    counterTrack.updateMatchedPairs();
 
     juce::MidiFile
         midiFile;
 
-    midiFile
-        .setTicksPerQuarterNote(
-            ticksPerQuarter);
+    midiFile.setTicksPerQuarterNote(
+        ticksPerQuarter);
 
     midiFile.addTrack(
         chordTrack);
@@ -705,8 +657,6 @@ writeMidiFile(
     midiFile.addTrack(
         counterTrack);
 
-    // Remove existing destination
-    // before creating the new MIDI file.
     if (file.existsAsFile())
     {
         if (!file.deleteFile())
@@ -726,7 +676,7 @@ writeMidiFile(
 }
 
 // =====================================================
-// TEMPORARY MIDI FILE
+// TEMP MIDI
 // =====================================================
 
 juce::File
@@ -762,7 +712,7 @@ exportMidiToFile(
 }
 
 // =====================================================
-// SAVE PLUGIN STATE
+// SAVE STATE
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -794,6 +744,11 @@ getStateInformation(
         nullptr);
 
     state.setProperty(
+        "melodyStyle",
+        melodyStyle,
+        nullptr);
+
+    state.setProperty(
         "melodyDensity",
         melodyDensity.load(),
         nullptr);
@@ -813,7 +768,16 @@ getStateInformation(
         humanise.load(),
         nullptr);
 
-    // Save the actual generated chords too.
+    state.setProperty(
+        "repetition",
+        repetition.load(),
+        nullptr);
+
+    state.setProperty(
+        "movement",
+        movement.load(),
+        nullptr);
+
     for (int i = 0;
          i < 4;
          ++i)
@@ -851,7 +815,7 @@ getStateInformation(
 }
 
 // =====================================================
-// LOAD PLUGIN STATE
+// LOAD STATE
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -897,6 +861,12 @@ setStateInformation(
             "Smooth")
             .toString();
 
+    melodyStyle =
+        state.getProperty(
+            "melodyStyle",
+            "Smooth")
+            .toString();
+
     melodyDensity =
         (int)state.getProperty(
             "melodyDensity",
@@ -917,8 +887,16 @@ setStateInformation(
             "humanise",
             10);
 
-    // Restore the exact progression that
-    // was saved with the FL Studio project.
+    repetition =
+        (int)state.getProperty(
+            "repetition",
+            60);
+
+    movement =
+        (int)state.getProperty(
+            "movement",
+            50);
+
     for (int i = 0;
          i < 4;
          ++i)
@@ -948,13 +926,11 @@ setStateInformation(
                         .type);
     }
 
-    // Regenerate melody around the
-    // restored progression.
     generateMelodies();
 }
 
 // =====================================================
-// CREATE EDITOR
+// EDITOR
 // =====================================================
 
 juce::AudioProcessorEditor*
@@ -967,7 +943,7 @@ createEditor()
 }
 
 // =====================================================
-// JUCE PLUGIN ENTRY POINT
+// PLUGIN ENTRY POINT
 // =====================================================
 
 juce::AudioProcessor*
