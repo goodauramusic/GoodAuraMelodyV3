@@ -2,10 +2,15 @@
 
 #include <JuceHeader.h>
 #include "MelodyEngine.h"
+#include "ProgressionEngine.h"
 
 #include <array>
 #include <atomic>
 #include <vector>
+
+// =====================================================
+// SIMPLE INTERNAL PREVIEW SOUND
+// =====================================================
 
 class PreviewSound : public juce::SynthesiserSound
 {
@@ -24,9 +29,12 @@ public:
 class PreviewVoice : public juce::SynthesiserVoice
 {
 public:
-    bool canPlaySound(juce::SynthesiserSound* sound) override
+    bool canPlaySound(
+        juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<PreviewSound*>(sound) != nullptr;
+        return
+            dynamic_cast<PreviewSound*>(sound)
+            != nullptr;
     }
 
     void startNote(
@@ -36,12 +44,19 @@ public:
         int) override
     {
         currentAngle = 0.0;
-        level = velocity * 0.14;
+
+        level =
+            velocity * 0.12;
 
         angleDelta =
-            juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber)
-            * juce::MathConstants<double>::twoPi
-            / getSampleRate();
+            juce::MidiMessage::
+                getMidiNoteInHertz(
+                    midiNoteNumber)
+            *
+            juce::MathConstants<double>::
+                twoPi
+            /
+            getSampleRate();
 
         tailOff = 0.0;
     }
@@ -58,6 +73,7 @@ public:
         else
         {
             clearCurrentNote();
+
             angleDelta = 0.0;
         }
     }
@@ -66,7 +82,9 @@ public:
     {
     }
 
-    void controllerMoved(int, int) override
+    void controllerMoved(
+        int,
+        int) override
     {
     }
 
@@ -82,13 +100,21 @@ public:
         {
             const auto sample =
                 (float)(
-                    std::sin(currentAngle)
-                    * level
-                    * (tailOff > 0.0 ? tailOff : 1.0)
+                    std::sin(
+                        currentAngle)
+                    *
+                    level
+                    *
+                    (
+                        tailOff > 0.0
+                        ? tailOff
+                        : 1.0
+                    )
                 );
 
             for (int channel = 0;
-                 channel < output.getNumChannels();
+                 channel <
+                    output.getNumChannels();
                  ++channel)
             {
                 output.addSample(
@@ -97,7 +123,9 @@ public:
                     sample);
             }
 
-            currentAngle += angleDelta;
+            currentAngle +=
+                angleDelta;
+
             ++startSample;
 
             if (tailOff > 0.0)
@@ -107,7 +135,9 @@ public:
                 if (tailOff <= 0.005)
                 {
                     clearCurrentNote();
+
                     angleDelta = 0.0;
+
                     break;
                 }
             }
@@ -120,6 +150,10 @@ private:
     double level = 0.0;
     double tailOff = 0.0;
 };
+
+// =====================================================
+// MAIN PROCESSOR
+// =====================================================
 
 class GoodAuraMelodyAudioProcessor
     : public juce::AudioProcessor
@@ -152,8 +186,8 @@ public:
         return true;
     }
 
-    const juce::String getName()
-        const override
+    const juce::String
+    getName() const override
     {
         return "Good Aura Melody";
     }
@@ -173,7 +207,8 @@ public:
         return false;
     }
 
-    double getTailLengthSeconds()
+    double
+    getTailLengthSeconds()
         const override
     {
         return 0.0;
@@ -212,12 +247,32 @@ public:
         const void*,
         int) override;
 
-    void generateNewPhrase();
+    // =================================================
+    // GENERATION
+    // =================================================
 
-    void setChord(
-        int slot,
-        int root,
-        int type);
+    void generateProgression();
+
+    void generateMelodies();
+
+    // =================================================
+    // PROGRESSION SETTINGS
+    // =================================================
+
+    void setKeyRoot(
+        int root);
+
+    void setMinorMode(
+        bool minor);
+
+    void setGenre(
+        const juce::String& genre);
+
+    void setMood(
+        const juce::String& mood);
+
+    juce::String
+    getProgressionText() const;
 
     const std::array<
         MelodyEngine::ChordChoice,
@@ -227,19 +282,33 @@ public:
         return progression;
     }
 
+    // =================================================
+    // PLAYBACK
+    // =================================================
+
     void startPreview();
 
     void stopPreview();
 
     bool isPreviewing() const
     {
-        return previewPlaying.load();
+        return
+            previewPlaying.load();
     }
 
-    juce::File writeMidiToTemporaryFile();
+    // =================================================
+    // MIDI EXPORT
+    // =================================================
+
+    juce::File
+    writeMidiToTemporaryFile();
 
     bool exportMidiToFile(
         const juce::File& destination);
+
+    // =================================================
+    // MELODY CONTROLS
+    // =================================================
 
     std::atomic<int>
         melodyDensity {65};
@@ -254,7 +323,19 @@ public:
         humanise {10};
 
 private:
-    MelodyEngine engine;
+    // =================================================
+    // ENGINES
+    // =================================================
+
+    MelodyEngine
+        melodyEngine;
+
+    ProgressionEngine
+        progressionEngine;
+
+    // =================================================
+    // CURRENT CHORD PROGRESSION
+    // =================================================
 
     std::array<
         MelodyEngine::ChordChoice,
@@ -267,6 +348,10 @@ private:
         {7, 4}
     }};
 
+    // =================================================
+    // GENERATED MUSICAL EVENTS
+    // =================================================
+
     std::vector<
         MelodyEngine::NoteEvent>
     phrase;
@@ -274,14 +359,33 @@ private:
     juce::CriticalSection
         phraseLock;
 
+    // =================================================
+    // INTERNAL PREVIEW SYNTH
+    // =================================================
+
     juce::Synthesiser
         previewSynth;
 
+    // =================================================
+    // PROGRESSION GENERATOR SETTINGS
+    // =================================================
+
+    int keyRoot = 0;
+
+    bool minorMode = false;
+
+    juce::String genre =
+        "R&B";
+
+    juce::String mood =
+        "Smooth";
+
+    // =================================================
+    // PLAYBACK
+    // =================================================
+
     double sampleRateHz =
         44100.0;
-
-    double fallbackBeatPosition =
-        0.0;
 
     std::atomic<bool>
         previewPlaying {false};
@@ -289,8 +393,12 @@ private:
     double previewBeatPosition =
         0.0;
 
+    // =================================================
+    // INTERNAL HELPERS
+    // =================================================
+
     void emitEventsForWindow(
-        juce::MidiBuffer&,
+        juce::MidiBuffer& midi,
         double blockStartBeat,
         double blockEndBeat,
         double samplesPerBeat,
