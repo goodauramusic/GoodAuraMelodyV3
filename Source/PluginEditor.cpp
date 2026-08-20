@@ -1,12 +1,20 @@
 #include "PluginEditor.h"
 
+// =====================================================
+// CONSTRUCTOR
+// =====================================================
+
 GoodAuraMelodyAudioProcessorEditor::
 GoodAuraMelodyAudioProcessorEditor(
     GoodAuraMelodyAudioProcessor& p)
     : AudioProcessorEditor(&p),
       processor(p)
 {
-    setSize(900, 560);
+    setSize(940, 620);
+
+    // =================================================
+    // TITLE
+    // =================================================
 
     title.setText(
         "GOOD AURA MELODY",
@@ -14,7 +22,7 @@ GoodAuraMelodyAudioProcessorEditor(
 
     title.setFont(
         juce::Font(
-            juce::FontOptions(28.0f)
+            juce::FontOptions(30.0f)
                 .withStyle("Bold")));
 
     title.setColour(
@@ -23,8 +31,12 @@ GoodAuraMelodyAudioProcessorEditor(
 
     addAndMakeVisible(title);
 
+    // =================================================
+    // SUBTITLE
+    // =================================================
+
     subtitle.setText(
-        "CHORDS + MAIN MELODY + COUNTER MELODY",
+        "PROGRESSION -> MELODY -> COUNTER MELODY",
         juce::dontSendNotification);
 
     subtitle.setColour(
@@ -33,73 +45,99 @@ GoodAuraMelodyAudioProcessorEditor(
 
     addAndMakeVisible(subtitle);
 
-    auto roots =
-        MelodyEngine::rootNames();
+    // =================================================
+    // KEY
+    // =================================================
 
-    auto chords =
-        MelodyEngine::chordNames();
+    keyBox.addItemList(
+        MelodyEngine::rootNames(),
+        1);
 
-    const auto& progression =
-        processor.getProgression();
+    keyBox.setSelectedId(1);
 
-    for (int i = 0;
-         i < 4;
-         ++i)
-    {
-        chordLabels[(size_t) i]
-            .setText(
-                "CHORD " +
-                juce::String(i + 1),
-                juce::dontSendNotification);
+    keyBox.onChange =
+        [this]
+        {
+            processor.setKeyRoot(
+                keyBox.getSelectedId() - 1);
+        };
 
-        chordLabels[(size_t) i]
-            .setColour(
-                juce::Label::textColourId,
-                juce::Colours::white);
+    addAndMakeVisible(keyBox);
 
-        addAndMakeVisible(
-            chordLabels[(size_t) i]);
+    // =================================================
+    // MODE
+    // =================================================
 
-        rootBoxes[(size_t) i]
-            .addItemList(
-                roots,
-                1);
+    modeBox.addItemList(
+        ProgressionEngine::modeNames(),
+        1);
 
-        chordBoxes[(size_t) i]
-            .addItemList(
-                chords,
-                1);
+    modeBox.setSelectedId(1);
 
-        rootBoxes[(size_t) i]
-            .setSelectedId(
-                progression[(size_t) i]
-                    .root + 1);
+    modeBox.onChange =
+        [this]
+        {
+            processor.setMinorMode(
+                modeBox.getSelectedId() == 2);
+        };
 
-        chordBoxes[(size_t) i]
-            .setSelectedId(
-                progression[(size_t) i]
-                    .type + 1);
+    addAndMakeVisible(modeBox);
 
-        rootBoxes[(size_t) i]
-            .onChange =
-            [this, i]
-            {
-                syncChord(i);
-            };
+    // =================================================
+    // GENRE
+    // =================================================
 
-        chordBoxes[(size_t) i]
-            .onChange =
-            [this, i]
-            {
-                syncChord(i);
-            };
+    genreBox.addItemList(
+        ProgressionEngine::genreNames(),
+        1);
 
-        addAndMakeVisible(
-            rootBoxes[(size_t) i]);
+    const int rnbIndex =
+        ProgressionEngine::genreNames()
+            .indexOf("R&B");
 
-        addAndMakeVisible(
-            chordBoxes[(size_t) i]);
-    }
+    genreBox.setSelectedId(
+        rnbIndex >= 0
+            ? rnbIndex + 1
+            : 1);
+
+    genreBox.onChange =
+        [this]
+        {
+            processor.setGenre(
+                genreBox.getText());
+        };
+
+    addAndMakeVisible(genreBox);
+
+    // =================================================
+    // MOOD
+    // =================================================
+
+    moodBox.addItemList(
+        ProgressionEngine::moodNames(),
+        1);
+
+    const int smoothIndex =
+        ProgressionEngine::moodNames()
+            .indexOf("Smooth");
+
+    moodBox.setSelectedId(
+        smoothIndex >= 0
+            ? smoothIndex + 1
+            : 1);
+
+    moodBox.onChange =
+        [this]
+        {
+            processor.setMood(
+                moodBox.getText());
+        };
+
+    addAndMakeVisible(moodBox);
+
+    // =================================================
+    // MELODY CONTROLS
+    // =================================================
 
     configureSlider(
         melodyDensity,
@@ -125,62 +163,103 @@ GoodAuraMelodyAudioProcessorEditor(
         [this]
         {
             processor.melodyDensity =
-                (int) melodyDensity.getValue();
+                (int)melodyDensity.getValue();
         };
 
     counterDensity.onValueChange =
         [this]
         {
             processor.counterDensity =
-                (int) counterDensity.getValue();
+                (int)counterDensity.getValue();
         };
 
     complexity.onValueChange =
         [this]
         {
             processor.complexity =
-                (int) complexity.getValue();
+                (int)complexity.getValue();
         };
 
     humanise.onValueChange =
         [this]
         {
             processor.humanise =
-                (int) humanise.getValue();
+                (int)humanise.getValue();
         };
 
-    generateButton.onClick =
+    // =================================================
+    // GENERATE CHORDS
+    // =================================================
+
+    generateProgressionButton.onClick =
         [this]
         {
-            for (int i = 0;
-                 i < 4;
-                 ++i)
-            {
-                syncChord(i);
-            }
+            syncGeneratorSettings();
 
-            processor.generateNewPhrase();
+            processor.generateProgression();
 
-            info.setText(
-                "New phrase generated.",
+            refreshProgressionText();
+
+            status.setText(
+                "New progression generated.",
                 juce::dontSendNotification);
         };
+
+    addAndMakeVisible(
+        generateProgressionButton);
+
+    // =================================================
+    // GENERATE MELODIES
+    // =================================================
+
+    generateMelodyButton.onClick =
+        [this]
+        {
+            processor.generateMelodies();
+
+            status.setText(
+                "New melody + counter melody generated.",
+                juce::dontSendNotification);
+        };
+
+    addAndMakeVisible(
+        generateMelodyButton);
+
+    // =================================================
+    // PLAY
+    // =================================================
 
     playButton.onClick =
         [this]
         {
             processor.startPreview();
 
-            refreshStatus();
+            status.setText(
+                "Playing preview.",
+                juce::dontSendNotification);
         };
+
+    addAndMakeVisible(playButton);
+
+    // =================================================
+    // STOP
+    // =================================================
 
     stopButton.onClick =
         [this]
         {
             processor.stopPreview();
 
-            refreshStatus();
+            status.setText(
+                "Stopped.",
+                juce::dontSendNotification);
         };
+
+    addAndMakeVisible(stopButton);
+
+    // =================================================
+    // EXPORT MIDI
+    // =================================================
 
     exportButton.onClick =
         [this]
@@ -227,80 +306,63 @@ GoodAuraMelodyAudioProcessorEditor(
                                 .exportMidiToFile(
                                     file);
 
-                        info.setText(
+                        status.setText(
                             success
-                                ? "MIDI exported successfully."
-                                : "Could not export MIDI.",
+                                ? "MIDI exported."
+                                : "MIDI export failed.",
                             juce::dontSendNotification);
                     }
                 });
         };
 
-    dragButton.onClick =
-        [this]
-        {
-            const auto file =
-                processor
-                    .writeMidiToTemporaryFile();
-
-            if (!file.existsAsFile())
-            {
-                info.setText(
-                    "Could not create MIDI file.",
-                    juce::dontSendNotification);
-
-                return;
-            }
-
-            juce::StringArray paths;
-
-            paths.add(
-                file.getFullPathName());
-
-            const bool started =
-                juce::DragAndDropContainer::
-                    performExternalDragDropOfFiles(
-                        paths,
-                        false,
-                        this);
-
-            info.setText(
-                started
-                    ? "Drag started — drop MIDI into FL Studio."
-                    : "External drag unavailable — use EXPORT MIDI.",
-                juce::dontSendNotification);
-        };
-
-    addAndMakeVisible(
-        generateButton);
-
-    addAndMakeVisible(
-        playButton);
-
-    addAndMakeVisible(
-        stopButton);
-
     addAndMakeVisible(
         exportButton);
 
-    addAndMakeVisible(
-        dragButton);
+    // =================================================
+    // PROGRESSION DISPLAY
+    // =================================================
 
-    info.setColour(
+    progressionLabel.setColour(
+        juce::Label::textColourId,
+        juce::Colours::white);
+
+    progressionLabel.setFont(
+        juce::Font(
+            juce::FontOptions(22.0f)
+                .withStyle("Bold")));
+
+    progressionLabel.setJustificationType(
+        juce::Justification::centred);
+
+    addAndMakeVisible(
+        progressionLabel);
+
+    // =================================================
+    // STATUS
+    // =================================================
+
+    status.setColour(
         juce::Label::textColourId,
         juce::Colours::lightgrey);
 
-    refreshStatus();
+    addAndMakeVisible(status);
 
-    addAndMakeVisible(info);
+    refreshProgressionText();
+
+    status.setText(
+        "Choose key, mode, genre and mood -> Generate Chords.",
+        juce::dontSendNotification);
 }
 
-void
-GoodAuraMelodyAudioProcessorEditor::
+// =====================================================
+// SLIDER SETUP
+// =====================================================
+
+void GoodAuraMelodyAudioProcessorEditor::
 configureSlider(
     juce::Slider& slider,
     const juce::String& name,
-    int initial)
+    int initialValue)
 {
     slider.setName(name);
 
@@ -321,47 +383,58 @@ configureSlider(
         1);
 
     slider.setValue(
-        initial);
+        initialValue);
 
     addAndMakeVisible(
         slider);
 }
 
-void
-GoodAuraMelodyAudioProcessorEditor::
-syncChord(
-    int index)
+// =====================================================
+// COPY GUI SETTINGS TO PROCESSOR
+// =====================================================
+
+void GoodAuraMelodyAudioProcessorEditor::
+syncGeneratorSettings()
 {
-    processor.setChord(
-        index,
+    processor.setKeyRoot(
+        keyBox.getSelectedId() - 1);
 
-        rootBoxes[(size_t) index]
-            .getSelectedId() - 1,
+    processor.setMinorMode(
+        modeBox.getSelectedId() == 2);
 
-        chordBoxes[(size_t) index]
-            .getSelectedId() - 1);
+    processor.setGenre(
+        genreBox.getText());
+
+    processor.setMood(
+        moodBox.getText());
 }
 
-void
-GoodAuraMelodyAudioProcessorEditor::
-refreshStatus()
+// =====================================================
+// UPDATE CHORD DISPLAY
+// =====================================================
+
+void GoodAuraMelodyAudioProcessorEditor::
+refreshProgressionText()
 {
-    info.setText(
-        processor.isPreviewing()
-            ? "Preview playing inside Good Aura Melody."
-            : "Choose chords → Generate → Play.",
+    progressionLabel.setText(
+        processor.getProgressionText(),
         juce::dontSendNotification);
 }
 
-void
-GoodAuraMelodyAudioProcessorEditor::
+// =====================================================
+// DRAW BACKGROUND
+// =====================================================
+
+void GoodAuraMelodyAudioProcessorEditor::
 paint(
     juce::Graphics& g)
 {
+    // Main background
     g.fillAll(
         juce::Colour(
             0xff101116));
 
+    // Main panel
     g.setColour(
         juce::Colour(
             0xff1d2029));
@@ -369,160 +442,203 @@ paint(
     g.fillRoundedRectangle(
         18.0f,
         18.0f,
-        (float) getWidth() - 36.0f,
-        (float) getHeight() - 36.0f,
+        (float)getWidth() - 36.0f,
+        (float)getHeight() - 36.0f,
         16.0f);
 
+    // Generator panel
     g.setColour(
         juce::Colour(
             0xff323745));
 
     g.fillRoundedRectangle(
-        32.0f,
-        100.0f,
-        (float) getWidth() - 64.0f,
-        130.0f,
+        34.0f,
+        108.0f,
+        (float)getWidth() - 68.0f,
+        160.0f,
         12.0f);
 
     g.setColour(
         juce::Colours::white);
 
+    // Selection labels
+    g.drawText(
+        "KEY",
+        50,
+        118,
+        100,
+        20,
+        juce::Justification::left);
+
+    g.drawText(
+        "MODE",
+        190,
+        118,
+        100,
+        20,
+        juce::Justification::left);
+
+    g.drawText(
+        "GENRE",
+        330,
+        118,
+        100,
+        20,
+        juce::Justification::left);
+
+    g.drawText(
+        "MOOD",
+        520,
+        118,
+        100,
+        20,
+        juce::Justification::left);
+
+    // Knob labels
     g.drawText(
         "MELODY",
-        54,
-        260,
+        60,
+        330,
         120,
         22,
         juce::Justification::left);
 
     g.drawText(
         "COUNTER",
-        244,
-        260,
+        270,
+        330,
         120,
         22,
         juce::Justification::left);
 
     g.drawText(
         "COMPLEXITY",
-        434,
-        260,
+        480,
+        330,
         120,
         22,
         juce::Justification::left);
 
     g.drawText(
         "HUMANISE",
-        624,
-        260,
+        690,
+        330,
         120,
         22,
         juce::Justification::left);
 }
 
-void
-GoodAuraMelodyAudioProcessorEditor::
+// =====================================================
+// LAYOUT
+// =====================================================
+
+void GoodAuraMelodyAudioProcessorEditor::
 resized()
 {
+    // Title
     title.setBounds(
-        38,
+        40,
         28,
-        420,
-        38);
+        500,
+        40);
 
     subtitle.setBounds(
-        40,
-        64,
-        560,
-        24);
+        42,
+        70,
+        600,
+        25);
 
-    for (int i = 0;
-         i < 4;
-         ++i)
-    {
-        const int x =
-            45 +
-            i * 200;
+    // Top controls
+    keyBox.setBounds(
+        48,
+        145,
+        110,
+        36);
 
-        chordLabels[(size_t) i]
-            .setBounds(
-                x,
-                112,
-                120,
-                20);
+    modeBox.setBounds(
+        188,
+        145,
+        110,
+        36);
 
-        rootBoxes[(size_t) i]
-            .setBounds(
-                x,
-                140,
-                72,
-                34);
+    genreBox.setBounds(
+        328,
+        145,
+        160,
+        36);
 
-        chordBoxes[(size_t) i]
-            .setBounds(
-                x + 78,
-                140,
-                108,
-                34);
-    }
+    moodBox.setBounds(
+        518,
+        145,
+        160,
+        36);
 
+    generateProgressionButton.setBounds(
+        708,
+        145,
+        175,
+        36);
+
+    // Generated progression
+    progressionLabel.setBounds(
+        60,
+        200,
+        820,
+        48);
+
+    // Knobs
     melodyDensity.setBounds(
         38,
-        288,
-        160,
-        130);
+        360,
+        170,
+        135);
 
     counterDensity.setBounds(
-        228,
-        288,
-        160,
-        130);
+        248,
+        360,
+        170,
+        135);
 
     complexity.setBounds(
-        418,
-        288,
-        160,
-        130);
+        458,
+        360,
+        170,
+        135);
 
     humanise.setBounds(
-        608,
-        288,
-        160,
-        130);
+        668,
+        360,
+        170,
+        135);
 
-    generateButton.setBounds(
+    // Bottom controls
+    generateMelodyButton.setBounds(
         42,
-        430,
-        235,
+        515,
+        200,
         40);
 
     playButton.setBounds(
-        292,
-        430,
+        258,
+        515,
         90,
         40);
 
     stopButton.setBounds(
-        392,
-        430,
+        358,
+        515,
         90,
         40);
 
     exportButton.setBounds(
-        492,
-        430,
-        145,
+        458,
+        515,
+        150,
         40);
 
-    dragButton.setBounds(
-        647,
-        430,
-        145,
+    status.setBounds(
+        620,
+        515,
+        280,
         40);
-
-    info.setBounds(
-        42,
-        485,
-        750,
-        34);
 }
