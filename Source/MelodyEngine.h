@@ -42,7 +42,8 @@ public:
     static juce::StringArray chordNames();
 
     static std::vector<int>
-    chordIntervals(int chordType);
+    chordIntervals(
+        int chordType);
 
     std::vector<NoteEvent>
     generate(
