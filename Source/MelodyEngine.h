@@ -33,6 +33,19 @@ public:
         int counterDensity = 45;
         int complexity = 55;
         int humanise = 10;
+
+        int repetition = 60;
+        int movement = 50;
+
+        juce::String style = "Smooth";
+    };
+
+    struct PhraseCandidate
+    {
+        std::vector<NoteEvent> lead;
+        std::vector<NoteEvent> counter;
+
+        double score = 0.0;
     };
 
     MelodyEngine();
@@ -40,6 +53,8 @@ public:
     static juce::StringArray rootNames();
 
     static juce::StringArray chordNames();
+
+    static juce::StringArray melodyStyleNames();
 
     static std::vector<int>
     chordIntervals(
@@ -59,17 +74,82 @@ private:
         int low,
         int high);
 
+    double randomDouble(
+        double low,
+        double high);
+
     bool chance(
         int percent);
 
-    int nearestPitchFromPool(
-        int previous,
-        const std::vector<int>& pool,
-        bool favorStep);
-
     std::vector<int>
-    makePool(
+    makeChordTonePool(
         const ChordChoice& chord,
         int low,
         int high) const;
+
+    std::vector<int>
+    makeMelodicPool(
+        const ChordChoice& chord,
+        int low,
+        int high) const;
+
+    int nearestPitch(
+        int previous,
+        const std::vector<int>& pool,
+        int maximumJump);
+
+    std::vector<double>
+    makeRhythmPattern(
+        const Settings& settings,
+        int barIndex);
+
+    std::vector<int>
+    createMotif(
+        const Settings& settings,
+        const ChordChoice& chord,
+        int startingNote);
+
+    std::vector<int>
+    mutateMotif(
+        const std::vector<int>& motif,
+        const Settings& settings,
+        const ChordChoice& chord);
+
+    std::vector<NoteEvent>
+    generateLeadCandidate(
+        const Settings& settings,
+        const std::array<
+            ChordChoice,
+            4>& progression);
+
+    std::vector<NoteEvent>
+    generateCounterCandidate(
+        const Settings& settings,
+        const std::array<
+            ChordChoice,
+            4>& progression,
+        const std::vector<NoteEvent>& lead);
+
+    double scoreLead(
+        const std::vector<NoteEvent>& lead,
+        const std::array<
+            ChordChoice,
+            4>& progression,
+        const Settings& settings) const;
+
+    double scoreCounter(
+        const std::vector<NoteEvent>& counter,
+        const std::vector<NoteEvent>& lead,
+        const std::array<
+            ChordChoice,
+            4>& progression,
+        const Settings& settings) const;
+
+    bool leadIsActiveNear(
+        const std::vector<NoteEvent>& lead,
+        double beat,
+        double tolerance) const;
+
+    int currentChordIndex(
+        double beat) const;
 };
