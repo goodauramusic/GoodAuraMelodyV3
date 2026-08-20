@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+
 #include "MelodyEngine.h"
 #include "ProgressionEngine.h"
 
@@ -9,10 +10,11 @@
 #include <vector>
 
 // =====================================================
-// SIMPLE INTERNAL PREVIEW SOUND
+// INTERNAL PREVIEW SOUND
 // =====================================================
 
-class PreviewSound : public juce::SynthesiserSound
+class PreviewSound
+    : public juce::SynthesiserSound
 {
 public:
     bool appliesToNote(int) override
@@ -26,14 +28,20 @@ public:
     }
 };
 
-class PreviewVoice : public juce::SynthesiserVoice
+// =====================================================
+// INTERNAL PREVIEW VOICE
+// =====================================================
+
+class PreviewVoice
+    : public juce::SynthesiserVoice
 {
 public:
     bool canPlaySound(
         juce::SynthesiserSound* sound) override
     {
         return
-            dynamic_cast<PreviewSound*>(sound)
+            dynamic_cast<PreviewSound*>(
+                sound)
             != nullptr;
     }
 
@@ -46,15 +54,16 @@ public:
         currentAngle = 0.0;
 
         level =
-            velocity * 0.12;
+            velocity
+            * 0.12;
 
         angleDelta =
             juce::MidiMessage::
                 getMidiNoteInHertz(
                     midiNoteNumber)
             *
-            juce::MathConstants<double>::
-                twoPi
+            juce::MathConstants<
+                double>::twoPi
             /
             getSampleRate();
 
@@ -113,7 +122,8 @@ public:
                 );
 
             for (int channel = 0;
-                 channel <
+                 channel
+                    <
                     output.getNumChannels();
                  ++channel)
             {
@@ -130,13 +140,16 @@ public:
 
             if (tailOff > 0.0)
             {
-                tailOff *= 0.994;
+                tailOff *=
+                    0.994;
 
-                if (tailOff <= 0.005)
+                if (tailOff
+                    <= 0.005)
                 {
                     clearCurrentNote();
 
-                    angleDelta = 0.0;
+                    angleDelta =
+                        0.0;
 
                     break;
                 }
@@ -164,6 +177,10 @@ public:
     ~GoodAuraMelodyAudioProcessor()
         override = default;
 
+    // =================================================
+    // JUCE AUDIO PROCESSOR
+    // =================================================
+
     void prepareToPlay(
         double sampleRate,
         int samplesPerBlock) override;
@@ -189,7 +206,8 @@ public:
     const juce::String
     getName() const override
     {
-        return "Good Aura Melody";
+        return
+            "Good Aura Melody";
     }
 
     bool acceptsMidi() const override
@@ -248,16 +266,10 @@ public:
         int) override;
 
     // =================================================
-    // GENERATION
+    // CHORD PROGRESSION GENERATOR
     // =================================================
 
     void generateProgression();
-
-    void generateMelodies();
-
-    // =================================================
-    // PROGRESSION SETTINGS
-    // =================================================
 
     void setKeyRoot(
         int root);
@@ -283,7 +295,22 @@ public:
     }
 
     // =================================================
-    // PLAYBACK
+    // MELODY GENERATOR
+    // =================================================
+
+    void generateMelodies();
+
+    void setMelodyStyle(
+        const juce::String& style);
+
+    juce::String
+    getMelodyStyle() const
+    {
+        return melodyStyle;
+    }
+
+    // =================================================
+    // INTERNAL PREVIEW
     // =================================================
 
     void startPreview();
@@ -307,7 +334,7 @@ public:
         const juce::File& destination);
 
     // =================================================
-    // MELODY CONTROLS
+    // GENERATOR CONTROLS
     // =================================================
 
     std::atomic<int>
@@ -322,6 +349,22 @@ public:
     std::atomic<int>
         humanise {10};
 
+    // =================================================
+    // NEW V5 CONTROLS
+    // =================================================
+
+    // How strongly motifs repeat.
+    //
+    // Low = more variation
+    // High = more recognizable repetition
+    std::atomic<int>
+        repetition {60};
+
+    // Controls how far notes are allowed
+    // to travel around the keyboard.
+    std::atomic<int>
+        movement {50};
+
 private:
     // =================================================
     // ENGINES
@@ -334,7 +377,7 @@ private:
         progressionEngine;
 
     // =================================================
-    // CURRENT CHORD PROGRESSION
+    // CURRENT PROGRESSION
     // =================================================
 
     std::array<
@@ -349,7 +392,7 @@ private:
     }};
 
     // =================================================
-    // GENERATED MUSICAL EVENTS
+    // CURRENT GENERATED PHRASE
     // =================================================
 
     std::vector<
@@ -360,24 +403,33 @@ private:
         phraseLock;
 
     // =================================================
-    // INTERNAL PREVIEW SYNTH
+    // INTERNAL SYNTH
     // =================================================
 
     juce::Synthesiser
         previewSynth;
 
     // =================================================
-    // PROGRESSION GENERATOR SETTINGS
+    // PROGRESSION SETTINGS
     // =================================================
 
-    int keyRoot = 0;
+    int keyRoot =
+        0;
 
-    bool minorMode = false;
+    bool minorMode =
+        false;
 
     juce::String genre =
         "R&B";
 
     juce::String mood =
+        "Smooth";
+
+    // =================================================
+    // V5 MELODY STYLE
+    // =================================================
+
+    juce::String melodyStyle =
         "Smooth";
 
     // =================================================
@@ -394,7 +446,7 @@ private:
         0.0;
 
     // =================================================
-    // INTERNAL HELPERS
+    // INTERNAL FUNCTIONS
     // =================================================
 
     void emitEventsForWindow(
