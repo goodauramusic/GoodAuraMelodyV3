@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(GoodAuraMelodyV5 VERSION 5.0.0)
+project(GoodAuraMelodyV5 VERSION 5.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,6 +56,9 @@ target_sources(
 
         Source/ProgressionEngine.cpp
         Source/ProgressionEngine.h
+
+        Source/PianoRollView.cpp
+        Source/PianoRollView.h
 )
 
 juce_generate_juce_header(
