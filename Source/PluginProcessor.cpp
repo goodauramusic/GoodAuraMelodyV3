@@ -112,7 +112,7 @@ setMood(
 }
 
 // =====================================================
-// MELODY STYLE
+// ADVANCED MELODY SETTINGS
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -121,6 +121,38 @@ setMelodyStyle(
 {
     melodyStyle =
         style;
+}
+
+void GoodAuraMelodyAudioProcessor::
+setSection(
+    const juce::String& newSection)
+{
+    section =
+        newSection;
+}
+
+void GoodAuraMelodyAudioProcessor::
+setContour(
+    const juce::String& newContour)
+{
+    contour =
+        newContour;
+}
+
+void GoodAuraMelodyAudioProcessor::
+setPocket(
+    const juce::String& newPocket)
+{
+    pocket =
+        newPocket;
+}
+
+void GoodAuraMelodyAudioProcessor::
+setCounterMode(
+    const juce::String& newCounterMode)
+{
+    counterMode =
+        newCounterMode;
 }
 
 // =====================================================
@@ -160,13 +192,14 @@ generateProgression()
 }
 
 // =====================================================
-// GENERATE MELODY + COUNTER
+// GENERATE ADVANCED V6 MELODY + COUNTER
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
 generateMelodies()
 {
-    MelodyEngine::Settings settings;
+    MelodyEngine::Settings
+        settings;
 
     settings.bars =
         4;
@@ -189,8 +222,41 @@ generateMelodies()
     settings.movement =
         movement.load();
 
+    settings.hookStrength =
+        hookStrength.load();
+
+    settings.variation =
+        variation.load();
+
+    settings.surprise =
+        surprise.load();
+
+    settings.tension =
+        tension.load();
+
+    settings.syncopation =
+        syncopation.load();
+
+    settings.restAmount =
+        restAmount.load();
+
+    settings.registerSpread =
+        registerSpread.load();
+
     settings.style =
         melodyStyle;
+
+    settings.section =
+        section;
+
+    settings.contour =
+        contour;
+
+    settings.pocket =
+        pocket;
+
+    settings.counterMode =
+        counterMode;
 
     auto generated =
         melodyEngine.generate(
@@ -206,14 +272,12 @@ generateMelodies()
                 generated);
     }
 
-    // Reset visual/playback position whenever
-    // a new phrase is generated.
     previewBeatPosition.store(
         0.0);
 }
 
 // =====================================================
-// DISPLAY CURRENT PROGRESSION
+// PROGRESSION TEXT
 // =====================================================
 
 juce::String
@@ -251,7 +315,7 @@ getProgressionText() const
 }
 
 // =====================================================
-// START PREVIEW
+// PREVIEW
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -268,10 +332,6 @@ startPreview()
         true);
 }
 
-// =====================================================
-// STOP PREVIEW
-// =====================================================
-
 void GoodAuraMelodyAudioProcessor::
 stopPreview()
 {
@@ -287,7 +347,7 @@ stopPreview()
 }
 
 // =====================================================
-// EMIT MIDI FOR CURRENT PLAYBACK WINDOW
+// EMIT MIDI
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -446,7 +506,7 @@ emitEventsForWindow(
 }
 
 // =====================================================
-// AUDIO / MIDI PROCESSING
+// AUDIO + MIDI PROCESSING
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
@@ -454,7 +514,8 @@ processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midi)
 {
-    juce::ScopedNoDenormals noDenormals;
+    juce::ScopedNoDenormals
+        noDenormals;
 
     buffer.clear();
 
@@ -493,7 +554,8 @@ processBlock(
         /
         samplesPerBeat;
 
-    juce::MidiBuffer generatedMidi;
+    juce::MidiBuffer
+        generatedMidi;
 
     if (previewPlaying.load())
     {
@@ -529,14 +591,12 @@ processBlock(
             nextBeat);
     }
 
-    // Send generated MIDI to the host.
     midi.addEvents(
         generatedMidi,
         0,
         buffer.getNumSamples(),
         0);
 
-    // Play through the internal preview synth.
     previewSynth.renderNextBlock(
         buffer,
         generatedMidi,
@@ -554,7 +614,7 @@ writeMidiFile(
 {
     std::vector<
         MelodyEngine::NoteEvent>
-    localPhrase;
+        localPhrase;
 
     {
         const juce::ScopedLock lock(
@@ -570,9 +630,14 @@ writeMidiFile(
     constexpr int ticksPerQuarter =
         960;
 
-    juce::MidiMessageSequence chordTrack;
-    juce::MidiMessageSequence melodyTrack;
-    juce::MidiMessageSequence counterTrack;
+    juce::MidiMessageSequence
+        chordTrack;
+
+    juce::MidiMessageSequence
+        melodyTrack;
+
+    juce::MidiMessageSequence
+        counterTrack;
 
     for (const auto& event :
          localPhrase)
@@ -614,7 +679,8 @@ writeMidiFile(
             destinationTrack =
                 &chordTrack;
         }
-        else if (event.channel == 2)
+        else if (
+            event.channel == 2)
         {
             destinationTrack =
                 &melodyTrack;
@@ -625,21 +691,30 @@ writeMidiFile(
                 &counterTrack;
         }
 
-        destinationTrack->addEvent(
-            noteOn);
+        destinationTrack
+            ->addEvent(
+                noteOn);
 
-        destinationTrack->addEvent(
-            noteOff);
+        destinationTrack
+            ->addEvent(
+                noteOff);
     }
 
-    chordTrack.updateMatchedPairs();
-    melodyTrack.updateMatchedPairs();
-    counterTrack.updateMatchedPairs();
+    chordTrack
+        .updateMatchedPairs();
 
-    juce::MidiFile midiFile;
+    melodyTrack
+        .updateMatchedPairs();
 
-    midiFile.setTicksPerQuarterNote(
-        ticksPerQuarter);
+    counterTrack
+        .updateMatchedPairs();
+
+    juce::MidiFile
+        midiFile;
+
+    midiFile
+        .setTicksPerQuarterNote(
+            ticksPerQuarter);
 
     midiFile.addTrack(
         chordTrack);
@@ -656,8 +731,9 @@ writeMidiFile(
             return false;
     }
 
-    juce::FileOutputStream stream(
-        file);
+    juce::FileOutputStream
+        stream(
+            file);
 
     if (!stream.openedOk())
         return false;
@@ -697,9 +773,8 @@ bool GoodAuraMelodyAudioProcessor::
 exportMidiToFile(
     const juce::File& destination)
 {
-    return
-        writeMidiFile(
-            destination);
+    return writeMidiFile(
+        destination);
 }
 
 // =====================================================
@@ -739,6 +814,26 @@ getStateInformation(
         nullptr);
 
     state.setProperty(
+        "section",
+        section,
+        nullptr);
+
+    state.setProperty(
+        "contour",
+        contour,
+        nullptr);
+
+    state.setProperty(
+        "pocket",
+        pocket,
+        nullptr);
+
+    state.setProperty(
+        "counterMode",
+        counterMode,
+        nullptr);
+
+    state.setProperty(
         "melodyDensity",
         melodyDensity.load(),
         nullptr);
@@ -766,6 +861,41 @@ getStateInformation(
     state.setProperty(
         "movement",
         movement.load(),
+        nullptr);
+
+    state.setProperty(
+        "hookStrength",
+        hookStrength.load(),
+        nullptr);
+
+    state.setProperty(
+        "variation",
+        variation.load(),
+        nullptr);
+
+    state.setProperty(
+        "surprise",
+        surprise.load(),
+        nullptr);
+
+    state.setProperty(
+        "tension",
+        tension.load(),
+        nullptr);
+
+    state.setProperty(
+        "syncopation",
+        syncopation.load(),
+        nullptr);
+
+    state.setProperty(
+        "restAmount",
+        restAmount.load(),
+        nullptr);
+
+    state.setProperty(
+        "registerSpread",
+        registerSpread.load(),
         nullptr);
 
     for (int i = 0;
@@ -857,6 +987,30 @@ setStateInformation(
             "Smooth")
             .toString();
 
+    section =
+        state.getProperty(
+            "section",
+            "Verse")
+            .toString();
+
+    contour =
+        state.getProperty(
+            "contour",
+            "Wave")
+            .toString();
+
+    pocket =
+        state.getProperty(
+            "pocket",
+            "Centre")
+            .toString();
+
+    counterMode =
+        state.getProperty(
+            "counterMode",
+            "Fill The Gaps")
+            .toString();
+
     melodyDensity =
         (int)state.getProperty(
             "melodyDensity",
@@ -886,6 +1040,41 @@ setStateInformation(
         (int)state.getProperty(
             "movement",
             50);
+
+    hookStrength =
+        (int)state.getProperty(
+            "hookStrength",
+            65);
+
+    variation =
+        (int)state.getProperty(
+            "variation",
+            45);
+
+    surprise =
+        (int)state.getProperty(
+            "surprise",
+            20);
+
+    tension =
+        (int)state.getProperty(
+            "tension",
+            40);
+
+    syncopation =
+        (int)state.getProperty(
+            "syncopation",
+            50);
+
+    restAmount =
+        (int)state.getProperty(
+            "restAmount",
+            35);
+
+    registerSpread =
+        (int)state.getProperty(
+            "registerSpread",
+            45);
 
     for (int i = 0;
          i < 4;
