@@ -8,7 +8,7 @@
 #include <memory>
 
 // =====================================================
-// GOOD AURA MELODY EDITOR
+// GOOD AURA MELODY V6 EDITOR
 // =====================================================
 
 class GoodAuraMelodyAudioProcessorEditor
@@ -28,44 +28,56 @@ public:
     void resized() override;
 
 private:
+
     // =================================================
     // PROCESSOR
-    // =====================================================
+    // =================================================
 
     GoodAuraMelodyAudioProcessor&
         processor;
 
     // =================================================
-    // TITLE
-    // =====================================================
+    // HEADER
+    // =================================================
 
     juce::Label title;
     juce::Label subtitle;
 
     // =================================================
-    // PROGRESSION CONTROLS
-    // =====================================================
+    // PROGRESSION
+    // =================================================
 
     juce::ComboBox keyBox;
     juce::ComboBox modeBox;
     juce::ComboBox genreBox;
     juce::ComboBox moodBox;
 
+    juce::Label progressionLabel;
+
+    juce::TextButton
+        generateProgressionButton
+        {
+            "GENERATE CHORDS"
+        };
+
+    // =================================================
+    // SONG / ARRANGEMENT
+    // =================================================
+
+    juce::ComboBox sectionBox;
+    juce::ComboBox contourBox;
+    juce::ComboBox pocketBox;
+    juce::ComboBox counterModeBox;
+
     // =================================================
     // MELODY STYLE
-    // =====================================================
+    // =================================================
 
     juce::ComboBox melodyStyleBox;
 
     // =================================================
-    // PROGRESSION DISPLAY
-    // =====================================================
-
-    juce::Label progressionLabel;
-
+    // ORIGINAL MELODY CONTROLS
     // =================================================
-    // GENERATOR KNOBS
-    // =====================================================
 
     juce::Slider melodyDensity;
     juce::Slider counterDensity;
@@ -75,14 +87,21 @@ private:
     juce::Slider movement;
 
     // =================================================
-    // GENERATOR BUTTONS
-    // =====================================================
+    // V6 ADVANCED CONTROLS
+    // =================================================
 
-    juce::TextButton
-        generateProgressionButton
-        {
-            "GENERATE CHORDS"
-        };
+    juce::Slider hookStrength;
+    juce::Slider variation;
+    juce::Slider surprise;
+    juce::Slider tension;
+
+    juce::Slider syncopation;
+    juce::Slider restAmount;
+    juce::Slider registerSpread;
+
+    // =================================================
+    // MELODY GENERATION
+    // =================================================
 
     juce::TextButton
         generateMelodyButton
@@ -91,8 +110,27 @@ private:
         };
 
     // =================================================
-    // PLAYBACK
-    // =====================================================
+    // IDEA LOCK
+    // =================================================
+
+    juce::TextButton
+        lockIdeaButton
+        {
+            "LOCK IDEA"
+        };
+
+    juce::TextButton
+        unlockIdeaButton
+        {
+            "UNLOCK"
+        };
+
+    juce::Label
+        ideaStatusLabel;
+
+    // =================================================
+    // PREVIEW
+    // =================================================
 
     juce::TextButton
         playButton
@@ -108,7 +146,7 @@ private:
 
     // =================================================
     // MIDI EXPORT
-    // =====================================================
+    // =================================================
 
     juce::TextButton
         exportButton
@@ -118,14 +156,14 @@ private:
 
     // =================================================
     // PIANO ROLL
-    // =====================================================
+    // =================================================
 
     PianoRollView
         pianoRoll;
 
     // =================================================
-    // LAYER VISIBILITY
-    // =====================================================
+    // PIANO ROLL LAYERS
+    // =================================================
 
     juce::ToggleButton
         showChordsButton
@@ -147,26 +185,36 @@ private:
 
     // =================================================
     // STATUS
-    // =====================================================
+    // =================================================
 
     juce::Label status;
 
     // =================================================
     // FILE CHOOSER
-    // =====================================================
+    // =================================================
 
     std::unique_ptr<
         juce::FileChooser>
         fileChooser;
 
     // =================================================
-    // HELPERS
-    // =====================================================
+    // GUI HELPERS
+    // =================================================
 
     void configureSlider(
         juce::Slider& slider,
         const juce::String& name,
         int initialValue);
+
+    void configureComboBox(
+        juce::ComboBox& box);
+
+    void configureButton(
+        juce::TextButton& button);
+
+    // =================================================
+    // PROCESSOR SYNC
+    // =================================================
 
     void syncGeneratorSettings();
 
@@ -174,12 +222,11 @@ private:
 
     void refreshPianoRoll();
 
+    void refreshIdeaStatus();
+
     // =================================================
     // TIMER
-    //
-    // Reads the live preview beat from the
-    // processor and updates the playhead.
-    // =====================================================
+    // =================================================
 
     void timerCallback() override;
 
