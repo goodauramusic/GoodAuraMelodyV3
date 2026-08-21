@@ -40,8 +40,8 @@ prepareToPlay(
     sampleRateHz =
         sampleRate;
 
-    previewBeatPosition =
-        0.0;
+    previewBeatPosition.store(
+        0.0);
 
     previewSynth
         .setCurrentPlaybackSampleRate(
@@ -156,20 +156,17 @@ generateProgression()
                     .type;
     }
 
-    // Generate a fresh melody every time
-    // the progression changes.
     generateMelodies();
 }
 
 // =====================================================
-// GENERATE V5 MELODY + COUNTER
+// GENERATE MELODY + COUNTER
 // =====================================================
 
 void GoodAuraMelodyAudioProcessor::
 generateMelodies()
 {
-    MelodyEngine::Settings
-        settings;
+    MelodyEngine::Settings settings;
 
     settings.bars =
         4;
@@ -200,13 +197,19 @@ generateMelodies()
             settings,
             progression);
 
-    const juce::ScopedLock
-        lock(
+    {
+        const juce::ScopedLock lock(
             phraseLock);
 
-    phrase =
-        std::move(
-            generated);
+        phrase =
+            std::move(
+                generated);
+    }
+
+    // Reset visual/playback position whenever
+    // a new phrase is generated.
+    previewBeatPosition.store(
+        0.0);
 }
 
 // =====================================================
@@ -258,11 +261,11 @@ startPreview()
         0,
         false);
 
-    previewBeatPosition =
-        0.0;
+    previewBeatPosition.store(
+        0.0);
 
-    previewPlaying =
-        true;
+    previewPlaying.store(
+        true);
 }
 
 // =====================================================
@@ -272,11 +275,11 @@ startPreview()
 void GoodAuraMelodyAudioProcessor::
 stopPreview()
 {
-    previewPlaying =
-        false;
+    previewPlaying.store(
+        false);
 
-    previewBeatPosition =
-        0.0;
+    previewBeatPosition.store(
+        0.0);
 
     previewSynth.allNotesOff(
         0,
@@ -451,8 +454,7 @@ processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midi)
 {
-    juce::ScopedNoDenormals
-        noDenormals;
+    juce::ScopedNoDenormals noDenormals;
 
     buffer.clear();
 
@@ -491,49 +493,50 @@ processBlock(
         /
         samplesPerBeat;
 
-    juce::MidiBuffer
-        generatedMidi;
+    juce::MidiBuffer generatedMidi;
 
     if (previewPlaying.load())
     {
-        const juce::ScopedLock
-            lock(
+        const double startBeat =
+            previewBeatPosition.load();
+
+        {
+            const juce::ScopedLock lock(
                 phraseLock);
 
-        emitEventsForWindow(
-            generatedMidi,
+            emitEventsForWindow(
+                generatedMidi,
+                startBeat,
+                startBeat + blockBeats,
+                samplesPerBeat,
+                buffer.getNumSamples());
+        }
 
-            previewBeatPosition,
-
-            previewBeatPosition
-                +
-                blockBeats,
-
-            samplesPerBeat,
-
-            buffer.getNumSamples());
-
-        previewBeatPosition +=
+        double nextBeat =
+            startBeat
+            +
             blockBeats;
 
-        if (previewBeatPosition
-            >= 16.0)
+        if (nextBeat >= 16.0)
         {
-            previewBeatPosition =
+            nextBeat =
                 std::fmod(
-                    previewBeatPosition,
+                    nextBeat,
                     16.0);
         }
+
+        previewBeatPosition.store(
+            nextBeat);
     }
 
-    // MIDI output to FL Studio.
+    // Send generated MIDI to the host.
     midi.addEvents(
         generatedMidi,
         0,
         buffer.getNumSamples(),
         0);
 
-    // Built-in preview sound.
+    // Play through the internal preview synth.
     previewSynth.renderNextBlock(
         buffer,
         generatedMidi,
@@ -551,12 +554,11 @@ writeMidiFile(
 {
     std::vector<
         MelodyEngine::NoteEvent>
-        localPhrase;
+    localPhrase;
 
     {
-        const juce::ScopedLock
-            lock(
-                phraseLock);
+        const juce::ScopedLock lock(
+            phraseLock);
 
         localPhrase =
             phrase;
@@ -568,14 +570,9 @@ writeMidiFile(
     constexpr int ticksPerQuarter =
         960;
 
-    juce::MidiMessageSequence
-        chordTrack;
-
-    juce::MidiMessageSequence
-        melodyTrack;
-
-    juce::MidiMessageSequence
-        counterTrack;
+    juce::MidiMessageSequence chordTrack;
+    juce::MidiMessageSequence melodyTrack;
+    juce::MidiMessageSequence counterTrack;
 
     for (const auto& event :
          localPhrase)
@@ -617,8 +614,7 @@ writeMidiFile(
             destinationTrack =
                 &chordTrack;
         }
-        else if (
-            event.channel == 2)
+        else if (event.channel == 2)
         {
             destinationTrack =
                 &melodyTrack;
@@ -629,21 +625,18 @@ writeMidiFile(
                 &counterTrack;
         }
 
-        destinationTrack
-            ->addEvent(
-                noteOn);
+        destinationTrack->addEvent(
+            noteOn);
 
-        destinationTrack
-            ->addEvent(
-                noteOff);
+        destinationTrack->addEvent(
+            noteOff);
     }
 
     chordTrack.updateMatchedPairs();
     melodyTrack.updateMatchedPairs();
     counterTrack.updateMatchedPairs();
 
-    juce::MidiFile
-        midiFile;
+    juce::MidiFile midiFile;
 
     midiFile.setTicksPerQuarterNote(
         ticksPerQuarter);
@@ -663,16 +656,14 @@ writeMidiFile(
             return false;
     }
 
-    juce::FileOutputStream
-        stream(
-            file);
+    juce::FileOutputStream stream(
+        file);
 
     if (!stream.openedOk())
         return false;
 
-    return
-        midiFile.writeTo(
-            stream);
+    return midiFile.writeTo(
+        stream);
 }
 
 // =====================================================
@@ -719,9 +710,8 @@ void GoodAuraMelodyAudioProcessor::
 getStateInformation(
     juce::MemoryBlock& destination)
 {
-    juce::ValueTree
-        state(
-            "GoodAuraMelody");
+    juce::ValueTree state(
+        "GoodAuraMelody");
 
     state.setProperty(
         "keyRoot",
