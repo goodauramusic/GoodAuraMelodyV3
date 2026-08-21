@@ -40,8 +40,7 @@ public:
         juce::SynthesiserSound* sound) override
     {
         return
-            dynamic_cast<PreviewSound*>(
-                sound)
+            dynamic_cast<PreviewSound*>(sound)
             != nullptr;
     }
 
@@ -54,16 +53,14 @@ public:
         currentAngle = 0.0;
 
         level =
-            velocity
-            * 0.12;
+            velocity * 0.12;
 
         angleDelta =
             juce::MidiMessage::
                 getMidiNoteInHertz(
                     midiNoteNumber)
             *
-            juce::MathConstants<
-                double>::twoPi
+            juce::MathConstants<double>::twoPi
             /
             getSampleRate();
 
@@ -109,8 +106,7 @@ public:
         {
             const auto sample =
                 (float)(
-                    std::sin(
-                        currentAngle)
+                    std::sin(currentAngle)
                     *
                     level
                     *
@@ -122,9 +118,7 @@ public:
                 );
 
             for (int channel = 0;
-                 channel
-                    <
-                    output.getNumChannels();
+                 channel < output.getNumChannels();
                  ++channel)
             {
                 output.addSample(
@@ -140,16 +134,13 @@ public:
 
             if (tailOff > 0.0)
             {
-                tailOff *=
-                    0.994;
+                tailOff *= 0.994;
 
-                if (tailOff
-                    <= 0.005)
+                if (tailOff <= 0.005)
                 {
                     clearCurrentNote();
 
-                    angleDelta =
-                        0.0;
+                    angleDelta = 0.0;
 
                     break;
                 }
@@ -178,8 +169,8 @@ public:
         override = default;
 
     // =================================================
-    // JUCE AUDIO PROCESSOR
-    // =================================================
+    // JUCE PROCESSOR
+    // =====================================================
 
     void prepareToPlay(
         double sampleRate,
@@ -206,8 +197,7 @@ public:
     const juce::String
     getName() const override
     {
-        return
-            "Good Aura Melody";
+        return "Good Aura Melody";
     }
 
     bool acceptsMidi() const override
@@ -266,8 +256,8 @@ public:
         int) override;
 
     // =================================================
-    // CHORD PROGRESSION GENERATOR
-    // =================================================
+    // CHORD PROGRESSION
+    // =====================================================
 
     void generateProgression();
 
@@ -296,7 +286,7 @@ public:
 
     // =================================================
     // MELODY GENERATOR
-    // =================================================
+    // =====================================================
 
     void generateMelodies();
 
@@ -310,8 +300,27 @@ public:
     }
 
     // =================================================
-    // INTERNAL PREVIEW
+    // NEW: PIANO ROLL DATA
+    // =====================================================
+
+    std::vector<
+        MelodyEngine::NoteEvent>
+    getGeneratedNotes() const
+    {
+        const juce::ScopedLock lock(
+            phraseLock);
+
+        return phrase;
+    }
+
+    double getPreviewBeat() const
+    {
+        return previewBeatPosition.load();
+    }
+
     // =================================================
+    // PLAYBACK
+    // =====================================================
 
     void startPreview();
 
@@ -319,13 +328,12 @@ public:
 
     bool isPreviewing() const
     {
-        return
-            previewPlaying.load();
+        return previewPlaying.load();
     }
 
     // =================================================
     // MIDI EXPORT
-    // =================================================
+    // =====================================================
 
     juce::File
     writeMidiToTemporaryFile();
@@ -335,7 +343,7 @@ public:
 
     // =================================================
     // GENERATOR CONTROLS
-    // =================================================
+    // =====================================================
 
     std::atomic<int>
         melodyDensity {65};
@@ -349,26 +357,16 @@ public:
     std::atomic<int>
         humanise {10};
 
-    // =================================================
-    // NEW V5 CONTROLS
-    // =================================================
-
-    // How strongly motifs repeat.
-    //
-    // Low = more variation
-    // High = more recognizable repetition
     std::atomic<int>
         repetition {60};
 
-    // Controls how far notes are allowed
-    // to travel around the keyboard.
     std::atomic<int>
         movement {50};
 
 private:
     // =================================================
     // ENGINES
-    // =================================================
+    // =====================================================
 
     MelodyEngine
         melodyEngine;
@@ -378,7 +376,7 @@ private:
 
     // =================================================
     // CURRENT PROGRESSION
-    // =================================================
+    // =====================================================
 
     std::array<
         MelodyEngine::ChordChoice,
@@ -392,32 +390,32 @@ private:
     }};
 
     // =================================================
-    // CURRENT GENERATED PHRASE
-    // =================================================
+    // GENERATED NOTES
+    // =====================================================
 
     std::vector<
         MelodyEngine::NoteEvent>
     phrase;
 
-    juce::CriticalSection
+    // Mutable allows the piano-roll getter
+    // to safely copy the notes from a const method.
+    mutable juce::CriticalSection
         phraseLock;
 
     // =================================================
-    // INTERNAL SYNTH
-    // =================================================
+    // INTERNAL PREVIEW SYNTH
+    // =====================================================
 
     juce::Synthesiser
         previewSynth;
 
     // =================================================
     // PROGRESSION SETTINGS
-    // =================================================
+    // =====================================================
 
-    int keyRoot =
-        0;
+    int keyRoot = 0;
 
-    bool minorMode =
-        false;
+    bool minorMode = false;
 
     juce::String genre =
         "R&B";
@@ -426,15 +424,15 @@ private:
         "Smooth";
 
     // =================================================
-    // V5 MELODY STYLE
-    // =================================================
+    // MELODY STYLE
+    // =====================================================
 
     juce::String melodyStyle =
         "Smooth";
 
     // =================================================
     // PLAYBACK
-    // =================================================
+    // =====================================================
 
     double sampleRateHz =
         44100.0;
@@ -442,12 +440,14 @@ private:
     std::atomic<bool>
         previewPlaying {false};
 
-    double previewBeatPosition =
-        0.0;
+    // Atomic because the audio thread writes this
+    // while the GUI piano roll reads it.
+    std::atomic<double>
+        previewBeatPosition {0.0};
 
     // =================================================
-    // INTERNAL FUNCTIONS
-    // =================================================
+    // INTERNAL HELPERS
+    // =====================================================
 
     void emitEventsForWindow(
         juce::MidiBuffer& midi,
