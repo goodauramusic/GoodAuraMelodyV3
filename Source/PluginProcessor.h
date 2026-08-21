@@ -170,7 +170,7 @@ public:
 
     // =================================================
     // JUCE PROCESSOR
-    // =====================================================
+    // =================================================
 
     void prepareToPlay(
         double sampleRate,
@@ -257,7 +257,7 @@ public:
 
     // =================================================
     // CHORD PROGRESSION
-    // =====================================================
+    // =================================================
 
     void generateProgression();
 
@@ -285,8 +285,8 @@ public:
     }
 
     // =================================================
-    // MELODY GENERATOR
-    // =====================================================
+    // MELODY GENERATION
+    // =================================================
 
     void generateMelodies();
 
@@ -300,8 +300,79 @@ public:
     }
 
     // =================================================
-    // NEW: PIANO ROLL DATA
-    // =====================================================
+    // V6 SONG SECTION
+    // =================================================
+
+    void setSection(
+        const juce::String& newSection);
+
+    juce::String
+    getSection() const
+    {
+        return section;
+    }
+
+    // =================================================
+    // V6 CONTOUR
+    // =================================================
+
+    void setContour(
+        const juce::String& newContour);
+
+    juce::String
+    getContour() const
+    {
+        return contour;
+    }
+
+    // =================================================
+    // V6 POCKET
+    // =================================================
+
+    void setPocket(
+        const juce::String& newPocket);
+
+    juce::String
+    getPocket() const
+    {
+        return pocket;
+    }
+
+    // =================================================
+    // V6 COUNTER MODE
+    // =================================================
+
+    void setCounterMode(
+        const juce::String& newCounterMode);
+
+    juce::String
+    getCounterMode() const
+    {
+        return counterMode;
+    }
+
+    // =================================================
+    // LOCK IDEA
+    // =================================================
+
+    void lockIdea()
+    {
+        melodyEngine.lockCurrentMotif();
+    }
+
+    void unlockIdea()
+    {
+        melodyEngine.unlockMotif();
+    }
+
+    bool isIdeaLocked() const
+    {
+        return melodyEngine.isMotifLocked();
+    }
+
+    // =================================================
+    // PIANO ROLL DATA
+    // =================================================
 
     std::vector<
         MelodyEngine::NoteEvent>
@@ -320,7 +391,7 @@ public:
 
     // =================================================
     // PLAYBACK
-    // =====================================================
+    // =================================================
 
     void startPreview();
 
@@ -333,7 +404,7 @@ public:
 
     // =================================================
     // MIDI EXPORT
-    // =====================================================
+    // =================================================
 
     juce::File
     writeMidiToTemporaryFile();
@@ -342,8 +413,8 @@ public:
         const juce::File& destination);
 
     // =================================================
-    // GENERATOR CONTROLS
-    // =====================================================
+    // EXISTING MELODY CONTROLS
+    // =================================================
 
     std::atomic<int>
         melodyDensity {65};
@@ -363,10 +434,43 @@ public:
     std::atomic<int>
         movement {50};
 
+    // =================================================
+    // NEW V6 CONTROLS
+    // =================================================
+
+    // Higher = stronger repeating hook.
+    std::atomic<int>
+        hookStrength {65};
+
+    // Higher = more motif mutation.
+    std::atomic<int>
+        variation {45};
+
+    // Higher = more unexpected melodic choices.
+    std::atomic<int>
+        surprise {20};
+
+    // Controls extensions, approaches
+    // and tension before resolutions.
+    std::atomic<int>
+        tension {40};
+
+    // Controls off-beat rhythmic movement.
+    std::atomic<int>
+        syncopation {50};
+
+    // Higher = more intentional silence.
+    std::atomic<int>
+        restAmount {35};
+
+    // Controls how wide the melodic range can become.
+    std::atomic<int>
+        registerSpread {45};
+
 private:
     // =================================================
     // ENGINES
-    // =====================================================
+    // =================================================
 
     MelodyEngine
         melodyEngine;
@@ -376,7 +480,7 @@ private:
 
     // =================================================
     // CURRENT PROGRESSION
-    // =====================================================
+    // =================================================
 
     std::array<
         MelodyEngine::ChordChoice,
@@ -391,31 +495,31 @@ private:
 
     // =================================================
     // GENERATED NOTES
-    // =====================================================
+    // =================================================
 
     std::vector<
         MelodyEngine::NoteEvent>
     phrase;
 
-    // Mutable allows the piano-roll getter
-    // to safely copy the notes from a const method.
     mutable juce::CriticalSection
         phraseLock;
 
     // =================================================
     // INTERNAL PREVIEW SYNTH
-    // =====================================================
+    // =================================================
 
     juce::Synthesiser
         previewSynth;
 
     // =================================================
     // PROGRESSION SETTINGS
-    // =====================================================
+    // =================================================
 
-    int keyRoot = 0;
+    int keyRoot =
+        0;
 
-    bool minorMode = false;
+    bool minorMode =
+        false;
 
     juce::String genre =
         "R&B";
@@ -424,15 +528,27 @@ private:
         "Smooth";
 
     // =================================================
-    // MELODY STYLE
-    // =====================================================
+    // ADVANCED MELODY SETTINGS
+    // =================================================
 
     juce::String melodyStyle =
         "Smooth";
 
+    juce::String section =
+        "Verse";
+
+    juce::String contour =
+        "Wave";
+
+    juce::String pocket =
+        "Centre";
+
+    juce::String counterMode =
+        "Fill The Gaps";
+
     // =================================================
     // PLAYBACK
-    // =====================================================
+    // =================================================
 
     double sampleRateHz =
         44100.0;
@@ -440,14 +556,12 @@ private:
     std::atomic<bool>
         previewPlaying {false};
 
-    // Atomic because the audio thread writes this
-    // while the GUI piano roll reads it.
     std::atomic<double>
         previewBeatPosition {0.0};
 
     // =================================================
     // INTERNAL HELPERS
-    // =====================================================
+    // =================================================
 
     void emitEventsForWindow(
         juce::MidiBuffer& midi,
