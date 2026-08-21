@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(GoodAuraMelodyV5 VERSION 5.1.0)
+project(GoodAuraMelodyV6 VERSION 6.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,12 +15,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(JUCE)
 
-juce_add_plugin(GoodAuraMelodyV5
+juce_add_plugin(GoodAuraMelodyV6
     COMPANY_NAME "Good Aura Music"
     BUNDLE_ID "com.goodauramusic.goodauramelody"
 
     PLUGIN_MANUFACTURER_CODE Gaur
-    PLUGIN_CODE Gam5
+    PLUGIN_CODE Gam6
 
     FORMATS VST3
 
@@ -42,7 +42,7 @@ juce_add_plugin(GoodAuraMelodyV5
 )
 
 target_sources(
-    GoodAuraMelodyV5
+    GoodAuraMelodyV6
 
     PRIVATE
         Source/PluginProcessor.cpp
@@ -62,11 +62,11 @@ target_sources(
 )
 
 juce_generate_juce_header(
-    GoodAuraMelodyV5
+    GoodAuraMelodyV6
 )
 
 target_compile_definitions(
-    GoodAuraMelodyV5
+    GoodAuraMelodyV6
 
     PRIVATE
         JUCE_WEB_BROWSER=0
@@ -75,7 +75,7 @@ target_compile_definitions(
 )
 
 target_link_libraries(
-    GoodAuraMelodyV5
+    GoodAuraMelodyV6
 
     PRIVATE
         juce::juce_audio_utils
