@@ -1,4 +1,4 @@
-name: Build Good Aura Melody V5.1
+name: Build Good Aura Melody V6
 
 on:
   push:
@@ -26,9 +26,14 @@ jobs:
             --parallel 2
 
       - name: Locate VST3
+        shell: bash
         run: |
-          echo "Searching for Good Aura Melody V5.1..."
-          find build -type d -name "*.vst3" -print
+          echo "Searching for Good Aura Melody V6..."
+
+          find build \
+            -type d \
+            -name "*.vst3" \
+            -print
 
       - name: Package VST3
         shell: bash
@@ -47,7 +52,9 @@ jobs:
           echo "Found VST3:"
           echo "$VST3_PATH"
 
-          cp -R "$VST3_PATH" artifact/
+          cp -R \
+            "$VST3_PATH" \
+            artifact/
 
           ditto \
             -c \
@@ -55,21 +62,67 @@ jobs:
             --sequesterRsrc \
             --keepParent \
             "$VST3_PATH" \
-            "artifact/GoodAuraMelody-V5.1-PianoRoll-macOS-Universal.zip"
+            "artifact/GoodAuraMelody-V6-macOS-Universal.zip"
 
-      - name: Verify architecture
+      - name: Verify plugin binary
         shell: bash
         run: |
           VST3_PATH="$(find build -type d -name "*.vst3" | head -n 1)"
+
           BINARY="$(find "$VST3_PATH/Contents/MacOS" -type f | head -n 1)"
 
-          echo "Plugin binary:"
+          echo "Plugin:"
+          echo "$VST3_PATH"
+
+          echo "Binary:"
           echo "$BINARY"
 
+          echo "Architecture:"
           file "$BINARY"
+
+      - name: Ad-hoc sign test build
+        shell: bash
+        run: |
+          VST3_PATH="$(find build -type d -name "*.vst3" | head -n 1)"
+
+          codesign \
+            --force \
+            --deep \
+            --sign - \
+            "$VST3_PATH"
+
+          codesign \
+            --verify \
+            --deep \
+            --strict \
+            --verbose=2 \
+            "$VST3_PATH"
+
+      - name: Repackage signed VST3
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf artifact
+
+          mkdir -p artifact
+
+          VST3_PATH="$(find build -type d -name "*.vst3" | head -n 1)"
+
+          cp -R \
+            "$VST3_PATH" \
+            artifact/
+
+          ditto \
+            -c \
+            -k \
+            --sequesterRsrc \
+            --keepParent \
+            "$VST3_PATH" \
+            "artifact/GoodAuraMelody-V6-macOS-Universal.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GoodAuraMelody-V5.1-PianoRoll-macOS-Universal
+          name: GoodAuraMelody-V6-macOS-Universal
           path: artifact/
